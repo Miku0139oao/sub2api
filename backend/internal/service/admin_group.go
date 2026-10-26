@@ -161,10 +161,41 @@ func (s *adminServiceImpl) CreateCompositeRoute(ctx context.Context, groupID int
 	if err != nil {
 		return nil, err
 	}
+	// Several routes may share one public_model (a failover chain / load
+	// balancing split), but the same platform twice for the same scope is a
+	// configuration mistake: the second entry can never be reached, because
+	// account-level failover already covers that platform's whole pool.
+	if err := s.rejectDuplicateCompositePlatform(ctx, groupID, 0, route); err != nil {
+		return nil, err
+	}
 	if err := s.compositeRouteRepo.Create(ctx, route); err != nil {
 		return nil, err
 	}
 	return route, nil
+}
+
+// rejectDuplicateCompositePlatform guards the combination that used to be
+// covered by the (now dropped) unique index: one platform, one scope, one
+// public model. routeID=0 means "creating a new route".
+func (s *adminServiceImpl) rejectDuplicateCompositePlatform(ctx context.Context, groupID, routeID int64, route *CompositeModelRoute) error {
+	routes, err := s.compositeRouteRepo.ListByGroup(ctx, groupID, true)
+	if err != nil {
+		return err
+	}
+	for _, existing := range routes {
+		if existing.ID == routeID {
+			continue
+		}
+		if existing.PublicModel != route.PublicModel ||
+			existing.MatchType != route.MatchType ||
+			existing.Endpoint != route.Endpoint ||
+			existing.TargetPlatform != route.TargetPlatform {
+			continue
+		}
+		return fmt.Errorf("%w: %q already routes to %s on endpoint %q",
+			ErrCompositeRouteExists, existing.PublicModel, existing.TargetPlatform, existing.Endpoint)
+	}
+	return nil
 }
 
 func (s *adminServiceImpl) UpdateCompositeRoute(ctx context.Context, groupID, routeID int64, input CompositeRouteInput) (*CompositeModelRoute, error) {
@@ -187,6 +218,9 @@ func (s *adminServiceImpl) UpdateCompositeRoute(ctx context.Context, groupID, ro
 		return nil, err
 	}
 	route.ID = routeID
+	if err := s.rejectDuplicateCompositePlatform(ctx, groupID, routeID, route); err != nil {
+		return nil, err
+	}
 	if err := s.compositeRouteRepo.Update(ctx, route); err != nil {
 		return nil, err
 	}
