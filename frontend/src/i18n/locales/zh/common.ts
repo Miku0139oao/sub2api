@@ -26,6 +26,14 @@ export default {
     export: '导出',
     import: '导入',
     actions: '操作',
+    passthroughSuffix: '透传',
+    period: {
+      short: {
+        day: '日',
+        week: '周',
+        month: '月'
+      }
+    },
     status: '状态',
     name: '名称',
     email: '邮箱',
@@ -389,6 +397,7 @@ export default {
       wechatAvailabilityUnknown: '暂时无法确认微信登录可用性，请刷新后重试。',
       wechatSystemBrowserOnly: '当前微信登录流程仅支持在系统浏览器中继续。',
       wechatBrowserOnly: '当前微信登录流程仅支持在微信内置浏览器中继续。',
+      wechatNativeAppRequired: '当前仅配置微信移动应用登录，需要在原生 App 中通过微信 SDK 发起授权。',
       wechatNotConfigured: '微信登录尚未配置。'
     },
     linuxdoCallbackPageTitle: 'LinuxDo 登录回调',

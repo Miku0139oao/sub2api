@@ -46,7 +46,115 @@ func WithCompositeRouteDecision(ctx context.Context, decision CompositeRouteDeci
 	if source := strings.TrimSpace(decision.Source); source != "" {
 		ctx = context.WithValue(ctx, ctxkey.CompositeRouteSource, source)
 	}
+	// Only a real chain overwrites the stored one. Re-resolving a public model
+	// without an explicit multi-platform chain (detector, account ownership,
+	// Gemini middleware) must not wipe a chain established earlier in the same
+	// request.
+	if len(decision.Candidates) > 1 {
+		ctx = WithCompositeRouteCandidates(ctx, decision.Candidates)
+	}
 	return ctx
+}
+
+// WithCompositeRouteCandidates records the ordered cross-platform failover
+// chain resolved for the current request. A nil or single-entry chain clears
+// any previously stored chain so the request keeps single-platform behaviour.
+func WithCompositeRouteCandidates(ctx context.Context, candidates []CompositeRouteCandidate) context.Context {
+	if ctx == nil {
+		return ctx
+	}
+	if len(candidates) < 2 {
+		return context.WithValue(ctx, ctxkey.CompositeRouteCandidates, []CompositeRouteCandidate(nil))
+	}
+	stored := append([]CompositeRouteCandidate(nil), candidates...)
+	return context.WithValue(ctx, ctxkey.CompositeRouteCandidates, stored)
+}
+
+// CompositeRouteCandidatesFromContext returns the failover chain resolved for
+// the current composite request, if any.
+func CompositeRouteCandidatesFromContext(ctx context.Context) ([]CompositeRouteCandidate, bool) {
+	if ctx == nil {
+		return nil, false
+	}
+	candidates, ok := ctx.Value(ctxkey.CompositeRouteCandidates).([]CompositeRouteCandidate)
+	if !ok || len(candidates) < 2 {
+		return nil, false
+	}
+	return candidates, true
+}
+
+// WithResolvedTargetPlatformOverride forcibly replaces the platform and
+// upstream model chosen for the current request. Unlike
+// WithCompositeRouteDecision it overwrites an existing decision, which is what
+// cross-platform failover needs when it advances to the next candidate.
+func WithResolvedTargetPlatformOverride(ctx context.Context, platform, upstreamModel string) context.Context {
+	if ctx == nil {
+		return ctx
+	}
+	platform = strings.TrimSpace(platform)
+	if platform == "" {
+		return ctx
+	}
+	ctx = context.WithValue(ctx, ctxkey.ResolvedTargetPlatform, platform)
+	upstreamModel = strings.TrimSpace(upstreamModel)
+	if upstreamModel == "" {
+		ctx = context.WithValue(ctx, ctxkey.ResolvedUpstreamModel, nil)
+		return ctx
+	}
+	// RequestedPublicModel is deliberately untouched: account_model ownership
+	// checks compare the client's public alias against an account's model
+	// mapping, which must not change just because the forwarded model did.
+	ctx = context.WithValue(ctx, ctxkey.ResolvedUpstreamModel, upstreamModel)
+	return ctx
+}
+
+// WithCompositeAttempt appends a platform that has already been attempted for
+// the current request. Repeated platforms are collapsed so the attempt list
+// reads as the failover path taken.
+func WithCompositeAttempt(ctx context.Context, platform string) context.Context {
+	if ctx == nil {
+		return ctx
+	}
+	platform = strings.TrimSpace(platform)
+	if platform == "" {
+		return ctx
+	}
+	attempts := CompositeAttemptsFromContext(ctx)
+	for _, attempted := range attempts {
+		if attempted == platform {
+			return ctx
+		}
+	}
+	next := append(append([]string(nil), attempts...), platform)
+	return context.WithValue(ctx, ctxkey.CompositeAttemptedPlatforms, next)
+}
+
+// CompositeAttemptsFromContext returns the platforms already attempted for the
+// current request, in attempt order.
+func CompositeAttemptsFromContext(ctx context.Context) []string {
+	if ctx == nil {
+		return nil
+	}
+	attempts, ok := ctx.Value(ctxkey.CompositeAttemptedPlatforms).([]string)
+	if !ok || len(attempts) == 0 {
+		return nil
+	}
+	return attempts
+}
+
+// CompositePlatformAttempted reports whether platform is in the request's
+// attempted list.
+func CompositePlatformAttempted(ctx context.Context, platform string) bool {
+	platform = strings.TrimSpace(platform)
+	if platform == "" {
+		return false
+	}
+	for _, attempted := range CompositeAttemptsFromContext(ctx) {
+		if attempted == platform {
+			return true
+		}
+	}
+	return false
 }
 
 func ResolvedUpstreamModelFromContext(ctx context.Context) (string, bool) {
@@ -187,6 +295,9 @@ func (s *GatewayService) resolveCompositeRouteDecision(ctx context.Context, grou
 		if resolvedSource, sourceOK := CompositeRouteSourceFromContext(ctx); sourceOK {
 			source = resolvedSource
 		}
+		// Keep the failover chain visible to callers that re-resolve from
+		// context (scheduling, billing) so it survives the early return.
+		candidates, _ := CompositeRouteCandidatesFromContext(ctx)
 		return CompositeRouteDecision{
 			Matched:        true,
 			Source:         source,
@@ -195,6 +306,7 @@ func (s *GatewayService) resolveCompositeRouteDecision(ctx context.Context, grou
 			TargetPlatform: platform,
 			UpstreamModel:  upstreamModel,
 			Endpoint:       normalizeCompositeRouteEndpoint(endpoint),
+			Candidates:     candidates,
 		}, true, nil
 	}
 	decision, err := s.compositeResolver.Resolve(ctx, group.ID, requestedModel, endpoint)
@@ -206,4 +318,73 @@ func (s *GatewayService) resolveCompositeRouteDecision(ctx context.Context, grou
 
 func isConcreteRequestPlatform(platform string) bool {
 	return domain.IsConcretePlatform(platform)
+}
+
+// ClearStickySessionForCompositeFailover drops the OpenAI sticky session
+// binding when a composite request moves to a different platform. Without this
+// the scheduler keeps preferring the account bound on the failed platform, so
+// the new platform's accounts are only reached after a wasted selection round.
+//
+// Non-composite groups and requests without a session hash are a no-op.
+func (s *OpenAIGatewayService) ClearStickySessionForCompositeFailover(ctx context.Context, apiKey *APIKey, sessionHash string) {
+	if s == nil || apiKey == nil || apiKey.GroupID == nil || strings.TrimSpace(sessionHash) == "" {
+		return
+	}
+	if apiKey.Group == nil || apiKey.Group.Platform != PlatformComposite {
+		return
+	}
+	_ = s.deleteStickySessionAccountID(ctx, apiKey.GroupID, sessionHash)
+}
+
+// WithCompositeAttemptBody stores the request body re-derived for the platform
+// a composite failover just moved to. Handlers that rebuild their forward body
+// from scratch on every loop iteration read it back so a model remap survives.
+func WithCompositeAttemptBody(ctx context.Context, body []byte) context.Context {
+	if ctx == nil {
+		return ctx
+	}
+	return context.WithValue(ctx, ctxkey.CompositeAttemptBody, body)
+}
+
+// CompositeAttemptBodyFromContext returns the body re-derived for the current
+// composite failover attempt, if one has been recorded.
+func CompositeAttemptBodyFromContext(ctx context.Context) ([]byte, bool) {
+	if ctx == nil {
+		return nil, false
+	}
+	body, ok := ctx.Value(ctxkey.CompositeAttemptBody).([]byte)
+	if !ok || len(body) == 0 {
+		return nil, false
+	}
+	return body, true
+}
+
+// WithCompositeAttemptOriginalBody records the client's unmodified request body
+// so a later composite failover can re-derive the upstream model from scratch
+// instead of layering rewrites on an already-rewritten body.
+func WithCompositeAttemptOriginalBody(ctx context.Context, body []byte) context.Context {
+	if ctx == nil {
+		return ctx
+	}
+	return context.WithValue(ctx, ctxkey.CompositeAttemptOriginalBody, body)
+}
+
+// CompositeAttemptOriginalBody returns the client's unmodified request body
+// recorded for composite failover, or nil when none was recorded.
+func CompositeAttemptOriginalBody(ctx context.Context) []byte {
+	if ctx == nil {
+		return nil
+	}
+	body, _ := ctx.Value(ctxkey.CompositeAttemptOriginalBody).([]byte)
+	return body
+}
+
+// ClearCompositeStickySession drops the sticky session binding for a composite
+// request that has moved to another platform, so selection does not keep
+// preferring the account bound on the platform that just failed.
+func (s *GatewayService) ClearCompositeStickySession(ctx context.Context, groupID int64, sessionHash string) {
+	if s == nil || s.cache == nil || groupID == 0 || strings.TrimSpace(sessionHash) == "" {
+		return
+	}
+	_ = s.cache.DeleteSessionAccountID(ctx, groupID, sessionHash)
 }

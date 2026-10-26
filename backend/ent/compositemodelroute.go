@@ -38,6 +38,8 @@ type CompositeModelRoute struct {
 	Endpoint string `json:"endpoint,omitempty"`
 	// Lower values win within the same match strength.
 	Priority int `json:"priority,omitempty"`
+	// Cross-platform load-balancing weight; 0 means failover-only.
+	Weight int `json:"weight,omitempty"`
 	// Enabled holds the value of the "enabled" field.
 	Enabled bool `json:"enabled,omitempty"`
 	// Notes holds the value of the "notes" field.
@@ -75,7 +77,7 @@ func (*CompositeModelRoute) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case compositemodelroute.FieldEnabled:
 			values[i] = new(sql.NullBool)
-		case compositemodelroute.FieldID, compositemodelroute.FieldGroupID, compositemodelroute.FieldPriority:
+		case compositemodelroute.FieldID, compositemodelroute.FieldGroupID, compositemodelroute.FieldPriority, compositemodelroute.FieldWeight:
 			values[i] = new(sql.NullInt64)
 		case compositemodelroute.FieldPublicModel, compositemodelroute.FieldMatchType, compositemodelroute.FieldTargetPlatform, compositemodelroute.FieldUpstreamModel, compositemodelroute.FieldEndpoint, compositemodelroute.FieldNotes:
 			values[i] = new(sql.NullString)
@@ -163,6 +165,12 @@ func (_m *CompositeModelRoute) assignValues(columns []string, values []any) erro
 			} else if value.Valid {
 				_m.Priority = int(value.Int64)
 			}
+		case compositemodelroute.FieldWeight:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field weight", values[i])
+			} else if value.Valid {
+				_m.Weight = int(value.Int64)
+			}
 		case compositemodelroute.FieldEnabled:
 			if value, ok := values[i].(*sql.NullBool); !ok {
 				return fmt.Errorf("unexpected type %T for field enabled", values[i])
@@ -248,6 +256,9 @@ func (_m *CompositeModelRoute) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("priority=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Priority))
+	builder.WriteString(", ")
+	builder.WriteString("weight=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Weight))
 	builder.WriteString(", ")
 	builder.WriteString("enabled=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Enabled))

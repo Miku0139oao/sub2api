@@ -196,6 +196,10 @@ func (c *BatchImageBalanceHoldCommand) Normalize() {
 	if strings.TrimSpace(c.RequestFingerprint) == "" {
 		c.RequestFingerprint = buildBatchImageBalanceHoldFingerprint(c)
 	}
+	// 与 UsageBillingCommand 一致：金额先量化到 NUMERIC(20,8) 再进 SQL，
+	// 否则 hold 与 capture 各自的加减法会在存储层独立舍入，冻结余额留下残差。
+	c.HoldAmount = QuantizeUsageBillingAmount(c.HoldAmount)
+	c.ActualAmount = QuantizeUsageBillingAmount(c.ActualAmount)
 }
 
 func buildBatchImageBalanceHoldFingerprint(c *BatchImageBalanceHoldCommand) string {

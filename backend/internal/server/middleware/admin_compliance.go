@@ -36,11 +36,16 @@ func AdminComplianceGuard(settingService *service.SettingService) gin.HandlerFun
 			"code":    "ADMIN_COMPLIANCE_ACK_REQUIRED",
 			"message": "administrator compliance acknowledgement is required",
 			"metadata": gin.H{
-				"version":          service.AdminComplianceVersion,
-				"document_path_zh": service.AdminComplianceDocumentPathZH,
-				"document_path_en": service.AdminComplianceDocumentPathEN,
-				"document_url_zh":  service.AdminComplianceDocumentURLZH,
-				"document_url_en":  service.AdminComplianceDocumentURLEN,
+				"version":             service.AdminComplianceVersion,
+				"document_path_zh":    service.AdminComplianceDocumentPathZH,
+				"document_path_zh_tw": service.AdminComplianceDocumentPathZHTW,
+				"document_path_en":    service.AdminComplianceDocumentPathEN,
+				"document_url_zh":     service.AdminComplianceDocumentURLZH,
+				"document_url_zh_tw":  service.AdminComplianceDocumentURLZHTW,
+				"document_url_en":     service.AdminComplianceDocumentURLEN,
+				"ack_phrase_zh":       service.AdminComplianceAckPhraseZH,
+				"ack_phrase_zh_tw":    service.AdminComplianceAckPhraseZHTW,
+				"ack_phrase_en":       service.AdminComplianceAckPhraseEN,
 			},
 		})
 		c.Abort()

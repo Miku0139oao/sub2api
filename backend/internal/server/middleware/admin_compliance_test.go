@@ -62,6 +62,10 @@ func TestAdminComplianceGuardBlocksAdminRouteWhenMissing(t *testing.T) {
 
 	require.Equal(t, http.StatusLocked, w.Code)
 	require.Contains(t, w.Body.String(), "ADMIN_COMPLIANCE_ACK_REQUIRED")
+	require.Contains(t, w.Body.String(), "document_path_zh_tw")
+	require.Contains(t, w.Body.String(), service.AdminComplianceDocumentPathZHTW)
+	require.Contains(t, w.Body.String(), "ack_phrase_zh_tw")
+	require.Contains(t, w.Body.String(), service.AdminComplianceAckPhraseZHTW)
 }
 
 func TestAdminComplianceGuardBypassesComplianceEndpoint(t *testing.T) {

@@ -468,6 +468,11 @@ func applyOpenAIImagesDefaults(req *OpenAIImagesRequest) {
 	if req.N <= 0 {
 		req.N = 1
 	}
+	// 客户端可以任意填写 n；上游解析不到实际张数时会回退用 n 计费，因此在这里
+	// 收敛到官方上限，避免一个异常大的 n 变成账单数字。上游真实返回的张数不受影响。
+	if req.N > maxBillableImageCountPerRequest {
+		req.N = maxBillableImageCountPerRequest
+	}
 	if strings.TrimSpace(req.Model) != "" {
 		req.Model = strings.TrimSpace(req.Model)
 		return

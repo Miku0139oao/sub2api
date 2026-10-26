@@ -570,7 +570,6 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 
 	// 解析渠道级模型映射
 	channelMapping, _ := h.gatewayService.ResolveChannelMappingAndRestrict(c.Request.Context(), apiKey.GroupID, reqModel)
-	forwardBody := openAIModelMappedBody(body, channelMapping.Mapped, channelMapping.MappedModel, h.gatewayService.ReplaceModelInBody)
 	seedOpenAIForwardImageIntentHint(c, channelMapping.Mapped, imageIntent)
 	forwardModel := openAIChannelForwardModel(channelMapping, reqModel)
 	c.Request = c.Request.WithContext(service.WithOpenAIForwardModel(
@@ -592,6 +591,10 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 	// Get subscription info (may be nil)
 	subscription, _ := middleware2.GetSubscriptionFromContext(c)
 	requestPlatform := openAICompatibleRequestPlatform(c.Request.Context(), apiKey)
+	// originalBody keeps the client body so each composite failover attempt can
+	// re-derive the upstream model for the platform it is about to try.
+	originalBody := body
+	compositePlatformSwitches := 0
 
 	service.SetOpsLatencyMs(c, service.OpsAuthLatencyMsKey, time.Since(requestStart).Milliseconds())
 	routingStart := time.Now()
@@ -657,6 +660,32 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 	needsResponses := nativeV2 || legacyCompact
 	requiredCapability := openAIResponsesRequiredCapabilityForRequest(imageIntent, needsResponses, requestPlatform)
 
+	// currentBody/currentForwardModel track the attempt's effective upstream
+	// model. They start at the first attempt's values and are re-derived for
+	// every composite platform failover, because each platform may use a
+	// different upstream model id for the same public alias.
+	currentBody := openAIModelMappedBody(originalBody, channelMapping.Mapped, channelMapping.MappedModel, h.gatewayService.ReplaceModelInBody)
+	currentForwardModel := forwardModel
+
+	// applyCompositeCandidate re-derives every per-platform value for the
+	// candidate the switch just selected. The channel lookup, the forwarded
+	// model, the scheduler platform and the endpoint capability are all
+	// platform-scoped, so all of them must move together.
+	applyCompositeCandidate := func(candidate service.CompositeRouteCandidate) {
+		resetOpenAICompositeAttemptState(failedAccountIDs, sameAccountRetryCount, &switchCount, &firstOutputTimeoutSwitchCount, &profitVetoCount, &lastFailoverErr, &oauth429FailoverState)
+		if h.gatewayService != nil && sessionHash != "" {
+			h.gatewayService.ClearStickySessionForCompositeFailover(c.Request.Context(), apiKey, sessionHash)
+		}
+		next := h.prepareOpenAICompositeAttempt(c, apiKey, originalBody, reqModel, candidate, previousResponseID, needsResponses, imageIntent)
+		channelMapping = next.ChannelMapping
+		currentBody = next.Body
+		currentForwardModel = next.ForwardModel
+		requestPlatform = next.RequestPlatform
+		requiredCapability = next.Capability
+		previousResponseID = next.PreviousResponseID
+		c.Request = c.Request.WithContext(service.WithOpenAIForwardModel(c.Request.Context(), next.ForwardModel, legacyCompact))
+	}
+
 	// 分组利润控制：请求级装配定价上下文——pricingAt 固定本请求的
 	// D 与计费高峰因子，选号、槽位终检与全部 failover 重入共用同一门与阈值。
 	// 生图意图只影响能力路由与图片计费，不关门：混合 /v1/responses 请求的
@@ -678,7 +707,7 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 			apiKey.GroupID,
 			previousResponseID,
 			sessionHash,
-			forwardModel,
+			currentForwardModel,
 			failedAccountIDs,
 			service.OpenAIUpstreamTransportAny,
 			requiredCapability,
@@ -696,6 +725,12 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 				zap.Error(openAICompatibleSelectionErrorForLog(err, requestPlatform)),
 				zap.Int("excluded_account_count", len(failedAccountIDs)),
 			)
+			// 该平台已经没有可用账号（刚被排除完，或该平台本来就没有账号）：
+			// 这是「停用第 N 順位帳號」的情境，換下一個平台才是正確處理。
+			if shouldAdvanceCompositeOnSelectionError(err, legacyCompact) &&
+				h.advanceCompositePlatform(c, apiKey, streamStarted, &compositePlatformSwitches, service.OpenAICompactKeepaliveAdjustedWrittenSize(c), applyCompositeCandidate) {
+				continue
+			}
 			if len(failedAccountIDs) == 0 {
 				if legacyCompact && errors.Is(err, service.ErrNoAvailableCompactAccounts) {
 					markOpsRoutingCapacityLimitedIfNoAvailable(c, err)
@@ -710,10 +745,17 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 				h.handleStreamingAwareError(c, cls.Status, cls.ErrType, cls.Message, streamStarted)
 				return
 			}
+			// 候選鏈已耗盡：回報最後一次真正發生的上游錯誤；若該平台只是沒有
+			// 帳號可用，則回報「選號失敗」對應的錯誤而非偽造的上游失敗。
 			if lastFailoverErr != nil {
 				h.handleFailoverExhausted(c, lastFailoverErr, streamStarted)
 			} else {
-				h.handleFailoverExhaustedSimple(c, 502, streamStarted)
+				cls := classifyNoAccountErrorFromGin(c, h.gatewayService, apiKey, reqModel, reqModel, requestPlatform)
+				cls = classifySelectionFailureError(err, cls)
+				if !cls.ModelNotFound {
+					markOpsRoutingCapacityLimitedIfNoAvailable(c, err)
+				}
+				h.handleStreamingAwareError(c, cls.Status, cls.ErrType, cls.Message, streamStarted)
 			}
 			return
 		}
@@ -788,7 +830,7 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 		// 跨 passthrough 边界的 failover：从 Kiro 等透传账号切到 Bedrock 等非透传账号前，
 		// 从不可变的 canonical forwardBody 派生本次尝试 body 并整块剔除上游私有的加密
 		// reasoning item（含耦合的 id/summary），避免非透传上游 400 拒绝 Kiro reasoning 形态。
-		attemptBody := h.deriveOpenAIForwardAttemptBody(reqLog, forwardBody, account, &passthroughFailoverState)
+		attemptBody := h.deriveOpenAIForwardAttemptBody(reqLog, currentBody, account, &passthroughFailoverState)
 		result, err := func() (*service.OpenAIForwardResult, error) {
 			defer func() {
 				if accountReleaseFunc != nil {
@@ -902,7 +944,7 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 						streamStarted = true
 					}
 					if failoverErr.ShouldReportAccountScheduleFailure() {
-						h.gatewayService.ReportOpenAIAccountScheduleResult(account, openAIAccountScheduleModel(c, account, forwardModel, requireCompact, nil), false, nil, err)
+						h.gatewayService.ReportOpenAIAccountScheduleResult(account, openAIAccountScheduleModel(c, account, currentForwardModel, requireCompact, nil), false, nil, err)
 					}
 					if !failoverErr.ShouldRetryNextAccount() {
 						h.handleFailoverExhausted(c, failoverErr, streamStarted)
@@ -937,6 +979,9 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 					failedAccountIDs[account.ID] = struct{}{}
 					lastFailoverErr = failoverErr
 					if switchCount >= maxAccountSwitches {
+						if h.advanceCompositePlatform(c, apiKey, streamStarted, &compositePlatformSwitches, service.OpenAICompactKeepaliveAdjustedWrittenSize(c), applyCompositeCandidate) {
+							continue
+						}
 						h.handleFailoverExhausted(c, failoverErr, streamStarted)
 						return
 					}
@@ -964,7 +1009,7 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 					reqLog.Warn("openai.upstream_failover_switching", failoverSwitchFields...)
 					continue
 				}
-				h.gatewayService.ReportOpenAIAccountScheduleResult(account, openAIAccountScheduleModel(c, account, forwardModel, requireCompact, result), false, nil, err)
+				h.gatewayService.ReportOpenAIAccountScheduleResult(account, openAIAccountScheduleModel(c, account, currentForwardModel, requireCompact, result), false, nil, err)
 				upstreamErrorAlreadyCommunicated := openAIForwardErrorAlreadyCommunicated(c, writerSizeBeforeForward, err)
 				wroteFallback := false
 				if !upstreamErrorAlreadyCommunicated {
@@ -990,9 +1035,9 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 			if account.Type == service.AccountTypeOAuth && !account.IsShadow() {
 				h.gatewayService.UpdateCodexUsageSnapshotFromHeaders(c.Request.Context(), account.ID, result.ResponseHeaders)
 			}
-			h.gatewayService.ReportOpenAIAccountScheduleResult(account, openAIAccountScheduleModel(c, account, forwardModel, requireCompact, result), openAIForwardSucceededForScheduling(result), result.FirstTokenMs)
+			h.gatewayService.ReportOpenAIAccountScheduleResult(account, openAIAccountScheduleModel(c, account, currentForwardModel, requireCompact, result), openAIForwardSucceededForScheduling(result), result.FirstTokenMs)
 		} else {
-			h.gatewayService.ReportOpenAIAccountScheduleResult(account, openAIAccountScheduleModel(c, account, forwardModel, requireCompact, result), openAIForwardSucceededForScheduling(result), nil)
+			h.gatewayService.ReportOpenAIAccountScheduleResult(account, openAIAccountScheduleModel(c, account, currentForwardModel, requireCompact, result), openAIForwardSucceededForScheduling(result), nil)
 		}
 
 		// 使用量记录通过有界 worker 池提交，避免请求热路径创建无界 goroutine。
@@ -1292,6 +1337,19 @@ func (h *OpenAIGatewayHandler) Messages(c *gin.Context) {
 	var lastFailoverErr *service.UpstreamFailoverError
 	var oauth429FailoverState service.OpenAIOAuth429FailoverState
 	effectiveMappedModel := preferredMappedModel
+	compositePlatformSwitches := 0
+	// compositeMessagesBody is the attempt body re-derived for a switched
+	// platform; nil means "use the first attempt's body".
+	var compositeMessagesBody []byte
+	applyMessagesCompositeCandidate := func(candidate service.CompositeRouteCandidate) {
+		resetOpenAICompositeAttemptState(failedAccountIDs, sameAccountRetryCount, &switchCount, nil, &profitVetoCount, &lastFailoverErr, &oauth429FailoverState)
+		next := h.prepareOpenAICompositeAttempt(c, apiKey, body, reqModel, candidate, "", false, false)
+		channelMappingMsg = next.ChannelMapping
+		compositeMessagesBody = next.Body
+		effectiveMappedModel = next.ForwardModel
+		requestPlatform = next.RequestPlatform
+		h.applyCompositeAttemptToOpenAIRequest(c, apiKey, sessionHash, next.ForwardModel, false)
+	}
 
 	// 分组利润控制：Messages 文本入口同样请求级装门并固定 pricingAt。
 	msgPricingCtx, pricingAt := h.gatewayService.WithOpenAIRequestPricingContext(c.Request.Context(), apiKey.GroupID)
@@ -1329,6 +1387,10 @@ func (h *OpenAIGatewayHandler) Messages(c *gin.Context) {
 				zap.Error(openAICompatibleSelectionErrorForLog(err, requestPlatform)),
 				zap.Int("excluded_account_count", len(failedAccountIDs)),
 			)
+			// 該平台已無可用帳號時先換下一個平台。
+			if h.advanceCompositePlatform(c, apiKey, streamStarted, &compositePlatformSwitches, service.OpenAICompactKeepaliveAdjustedWrittenSize(c), applyMessagesCompositeCandidate) {
+				continue
+			}
 			if len(failedAccountIDs) == 0 {
 				if err != nil {
 					cls := classifyOpenAICompatibleNoAccountErrorFromGin(c, h.gatewayService, apiKey, currentRoutingModel, reqModel)
@@ -1342,7 +1404,11 @@ func (h *OpenAIGatewayHandler) Messages(c *gin.Context) {
 				if lastFailoverErr != nil {
 					h.handleAnthropicFailoverExhausted(c, lastFailoverErr, streamStarted)
 				} else {
-					h.anthropicStreamingAwareError(c, http.StatusBadGateway, "api_error", "Upstream request failed", streamStarted)
+					cls := classifyOpenAICompatibleNoAccountErrorFromGin(c, h.gatewayService, apiKey, currentRoutingModel, reqModel)
+					if !cls.ModelNotFound {
+						markOpsRoutingCapacityLimitedIfNoAvailable(c, nil)
+					}
+					h.anthropicStreamingAwareError(c, cls.Status, cls.ErrType, cls.Message, streamStarted)
 				}
 				return
 			}
@@ -1381,6 +1447,9 @@ func (h *OpenAIGatewayHandler) Messages(c *gin.Context) {
 		defaultMappedModel := strings.TrimSpace(effectiveMappedModel)
 		// 应用渠道模型映射到请求体
 		forwardBody := mappedBodyForMessages(channelMappingMsg.Mapped, channelMappingMsg.MappedModel)
+		if compositeMessagesBody != nil {
+			forwardBody = compositeMessagesBody
+		}
 		writerSizeBeforeForward := c.Writer.Size()
 		result, err := func() (*service.OpenAIForwardResult, error) {
 			defer func() {
@@ -1505,6 +1574,9 @@ func (h *OpenAIGatewayHandler) Messages(c *gin.Context) {
 					failedAccountIDs[account.ID] = struct{}{}
 					lastFailoverErr = failoverErr
 					if switchCount >= maxAccountSwitches {
+						if h.advanceCompositePlatform(c, apiKey, streamStarted, &compositePlatformSwitches, service.OpenAICompactKeepaliveAdjustedWrittenSize(c), applyMessagesCompositeCandidate) {
+							continue
+						}
 						h.handleAnthropicFailoverExhausted(c, failoverErr, streamStarted)
 						return
 					}

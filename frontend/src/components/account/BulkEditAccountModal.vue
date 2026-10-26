@@ -455,7 +455,7 @@
                   :class="['rounded-lg px-3 py-1 text-xs transition-colors', preset.color]"
                   @click="addPresetMapping(preset.from, preset.to)"
                 >
-                  + {{ preset.label }}
+                  + {{ localizeModelPresetLabel(preset.label, t) }}
                 </button>
               </div>
             </div>
@@ -1496,7 +1496,8 @@ import ModelWhitelistSelector from '@/components/account/ModelWhitelistSelector.
 import Icon from '@/components/icons/Icon.vue'
 import {
   buildModelMappingObject as buildModelMappingPayload,
-  getPresetMappingsByPlatform
+  getPresetMappingsByPlatform,
+  localizeModelPresetLabel
 } from '@/composables/useModelWhitelist'
 import HeaderOverrideEditor from '@/components/account/HeaderOverrideEditor.vue'
 import {

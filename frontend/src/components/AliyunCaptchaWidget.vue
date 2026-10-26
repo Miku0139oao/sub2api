@@ -42,6 +42,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { aliyunCaptchaLanguage } from '@/utils/aliyunCaptcha'
 
 interface AliyunCaptchaVerifyResult {
   captchaResult: boolean
@@ -168,7 +169,7 @@ function initCaptcha(): void {
     onBizResultCallback: () => {},
     getInstance: () => {},
     slideStyle: { width: 360, height: 40 },
-    language: locale.value.toLowerCase().startsWith('zh') ? 'cn' : 'en'
+    language: aliyunCaptchaLanguage(locale.value)
   })
 }
 

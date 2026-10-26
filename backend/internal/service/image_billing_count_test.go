@@ -15,6 +15,8 @@ func TestResolveBillableImageCount(t *testing.T) {
 		{name: "开关关闭保留请求 n", reported: 0, requested: 3, want: 3},
 		{name: "流式开关关闭保持 0", reported: 0, requested: 0, want: 0},
 		{name: "非法负数开关关闭保持 n", reported: -1, requested: 2, want: 2},
+		{name: "开关关闭收敛超大请求 n", reported: 0, requested: 500, want: maxBillableImageCountPerRequest},
+		{name: "真实张数不受上限影响", reported: 42, requested: 0, want: 42},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -661,11 +661,22 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 		}
 	}()
 
+	// composite 跨平台 failover 需要原始 body 才能在切换平台后重新推导上游
+	// 模型（attemptParsedReq 是逐次尝试的副本，不能作为来源）。
+	originalBody := body
+	c.Request = c.Request.WithContext(service.WithCompositeAttemptOriginalBody(c.Request.Context(), originalBody))
+	compositePlatformSwitches := 0
+
 	for {
 		fs := NewFailoverState(h.maxAccountSwitches, hasBoundSession)
 		retryWithFallback := false
 
 		for {
+			// 跨平台 failover 会改写 c.Request 的 context（目标平台 / 上游模型 /
+			// 候选请求体），body 是循环外捕获的，切换后必须改用候选请求体。
+			if compositeBody, compositeOK := service.CompositeAttemptBodyFromContext(c.Request.Context()); compositeOK {
+				body = compositeBody
+			}
 			attemptParsedReq, err := parsedReq.CloneForBody(body)
 			if err != nil {
 				h.errorResponse(c, http.StatusBadRequest, "invalid_request_error", "Failed to parse request body")
@@ -716,6 +727,12 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 					return
 				default: // FailoverExhausted
 					if fs.LastFailoverErr != nil {
+						if h.advanceAnthropicCompositePlatform(c, currentAPIKey, fs, streamStarted, &compositePlatformSwitches, c.Writer.Size(), sessionHash, channelMapping, reqModel) {
+							if resolved, ok := service.ResolvedTargetPlatformFromContext(c.Request.Context()); ok {
+								platform = resolved
+							}
+							continue
+						}
 						h.handleFailoverExhausted(c, fs.LastFailoverErr, platform, streamStarted)
 					} else {
 						h.handleFailoverExhaustedSimple(c, 502, streamStarted)
@@ -1068,6 +1085,12 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 						delete(sessionSlotAccounts, account.ID)
 						continue
 					case FailoverExhausted:
+						if h.advanceAnthropicCompositePlatform(c, currentAPIKey, fs, streamStarted, &compositePlatformSwitches, c.Writer.Size(), sessionHash, channelMapping, reqModel) {
+							if resolved, ok := service.ResolvedTargetPlatformFromContext(c.Request.Context()); ok {
+								platform = resolved
+							}
+							continue
+						}
 						h.handleFailoverExhausted(c, fs.LastFailoverErr, account.Platform, streamStarted)
 						return
 					case FailoverCanceled:

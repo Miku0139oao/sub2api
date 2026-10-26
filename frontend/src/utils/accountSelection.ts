@@ -1,3 +1,5 @@
+import { i18n } from '@/i18n'
+
 interface AccountIDRow {
   id: number
 }
@@ -39,7 +41,7 @@ export async function fetchAllAccountIds(
 
   const uniqueIDs = Array.from(new Set(ids))
   if (uniqueIDs.length !== firstPage.total) {
-    throw new Error('账号列表结果不完整')
+    throw new Error(i18n.global.t('errors.accountListIncomplete'))
   }
   return uniqueIDs
 }

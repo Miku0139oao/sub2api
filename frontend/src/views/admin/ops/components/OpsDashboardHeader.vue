@@ -10,7 +10,7 @@ import { adminAPI } from '@/api'
 import { opsAPI, type OpsDashboardOverview, type OpsMetricThresholds, type OpsRealtimeTrafficSummary } from '@/api/admin/ops'
 import type { OpsRequestDetailsPreset } from './OpsRequestDetailsModal.vue'
 import { useAdminSettingsStore } from '@/stores'
-import { formatDateTimeLocalInput, formatNumber } from '@/utils/format'
+import { formatDateTime, formatDateTimeLocalInput, formatNumber } from '@/utils/format'
 import { formatMemorySizeMB } from '../utils/opsFormatters'
 
 type RealtimeWindow = '1min' | '5min' | '30min' | '1h'
@@ -884,7 +884,7 @@ function handleToolbarRefresh() {
           </span>
 
           <span>·</span>
-          <span>{{ t('common.refresh') }}: {{ props.lastUpdated ? props.lastUpdated.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\//g, '-') : t('common.unknown') }}</span>
+          <span>{{ t('common.refresh') }}: {{ props.lastUpdated ? formatDateTime(props.lastUpdated).replace(/\//g, '-') : t('common.unknown') }}</span>
 
           <template v-if="props.autoRefreshEnabled && props.autoRefreshCountdown !== undefined">
             <span>·</span>

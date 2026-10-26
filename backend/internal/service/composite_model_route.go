@@ -57,6 +57,9 @@ type CompositeModelRoute struct {
 	UpstreamModel  string    `json:"upstream_model"`
 	Endpoint       string    `json:"endpoint"`
 	Priority       int       `json:"priority"`
+	// Weight enables cross-platform load balancing for this route. Zero keeps
+	// the route failover-only, which is the pre-existing behaviour.
+	Weight         int       `json:"weight"`
 	Enabled        bool      `json:"enabled"`
 	Notes          string    `json:"notes"`
 	CreatedAt      time.Time `json:"created_at"`
@@ -66,6 +69,21 @@ type CompositeModelRoute struct {
 type CompositeRoutePreviewRequest struct {
 	Model    string `json:"model"`
 	Endpoint string `json:"endpoint"`
+}
+
+// CompositeRouteCandidate is one link in the ordered failover chain for a
+// public model. Several routes may share the same public_model and match_type
+// while targeting different platforms; each is a fallback for the previous one
+// within a single client request.
+type CompositeRouteCandidate struct {
+	TargetPlatform string `json:"target_platform"`
+	UpstreamModel  string `json:"upstream_model"`
+	Priority       int    `json:"priority"`
+	RouteID        int64  `json:"route_id"`
+	Endpoint       string `json:"endpoint"`
+	// Weight is the route's load-balancing share. Zero means the platform is
+	// failover-only and is never chosen as a session's primary platform.
+	Weight int `json:"weight,omitempty"`
 }
 
 type CompositeRouteDecision struct {
@@ -78,6 +96,16 @@ type CompositeRouteDecision struct {
 	Endpoint       string               `json:"endpoint"`
 	Route          *CompositeModelRoute `json:"route,omitempty"`
 	Reason         string               `json:"reason,omitempty"`
+	// Candidates is the ordered cross-platform failover chain for this public
+	// model, starting with the platform this session should use. It is populated
+	// only for explicit route matches with more than one distinct target
+	// platform; a single route leaves it empty so request behaviour is
+	// unchanged for every pre-existing configuration.
+	Candidates []CompositeRouteCandidate `json:"candidates,omitempty"`
+	// LoadBalanced reports that weighted load balancing moved this session off
+	// the highest-priority platform, i.e. TargetPlatform came from `weight`
+	// rather than from `priority`.
+	LoadBalanced bool `json:"load_balanced,omitempty"`
 }
 
 type CompositeRouteInput struct {
@@ -87,6 +115,7 @@ type CompositeRouteInput struct {
 	UpstreamModel  string
 	Endpoint       string
 	Priority       int
+	Weight         int
 	Enabled        bool
 	Notes          string
 }
@@ -141,6 +170,11 @@ func normalizeCompositeRouteInput(input CompositeRouteInput) CompositeRouteInput
 	// 都塌缩成固定的 deepseek-v4）。显式填写 upstream_model 时任何模式都原样固定转发。
 	if input.UpstreamModel == "" && input.MatchType == CompositeRouteMatchExact {
 		input.UpstreamModel = input.PublicModel
+	}
+	// A negative weight is meaningless; clamp instead of persisting it. Zero is
+	// kept as "failover-only".
+	if input.Weight < 0 {
+		input.Weight = 0
 	}
 	input.Notes = strings.TrimSpace(input.Notes)
 	return input

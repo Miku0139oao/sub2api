@@ -272,6 +272,7 @@ func compositeRouteFromInput(groupID int64, input CompositeRouteInput) (*Composi
 		UpstreamModel:  input.UpstreamModel,
 		Endpoint:       input.Endpoint,
 		Priority:       input.Priority,
+		Weight:         input.Weight,
 		Enabled:        input.Enabled,
 		Notes:          input.Notes,
 	}, nil
@@ -322,6 +323,24 @@ func DefaultAllowImageGenerationForPlatform(platform string) bool {
 	default:
 		return false
 	}
+}
+
+// validateImageCountBillingTarget 校验按张计费开关适用于该分组。
+// 与 GroupService 的校验保持一致，供管理端实际更新路径复用。
+func validateImageCountBillingTarget(allowImageGeneration bool, platform string) error {
+	if !allowImageGeneration {
+		return infraerrors.BadRequest(
+			"IMAGE_COUNT_BILLING_REQUIRES_IMAGE_GENERATION",
+			"image_count_billing requires image generation enabled",
+		)
+	}
+	if platform != PlatformComposite && platform != PlatformOpenAI {
+		return infraerrors.BadRequest(
+			"IMAGE_COUNT_BILLING_UNSUPPORTED_PLATFORM",
+			"image_count_billing is only supported for composite or openai groups",
+		)
+	}
+	return nil
 }
 
 func compositeDefaultModelsListCandidateIDs() []string {
@@ -534,6 +553,12 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 
 	allowImageGeneration := input.AllowImageGeneration || DefaultAllowImageGenerationForPlatform(platform)
 	allowBatchImageGeneration := input.AllowBatchImageGeneration && allowImageGeneration && platform == PlatformGemini
+	// 显式请求开启按张计费但平台/开关不支持时报错，避免静默写 false。
+	if input.ImageCountBilling {
+		if err := validateImageCountBillingTarget(allowImageGeneration, platform); err != nil {
+			return nil, err
+		}
+	}
 	imageCountBilling := input.ImageCountBilling && allowImageGeneration &&
 		(platform == PlatformComposite || platform == PlatformOpenAI)
 
@@ -849,6 +874,13 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 		group.AllowBatchImageGeneration = false
 	}
 	if input.ImageCountBilling != nil {
+		// 显式打开开关但平台/图片生成不支持时必须报错，而不是静默改成 false：
+		// 静默清空会让调用方以为配置生效，实际仍在按 token 计费。
+		if *input.ImageCountBilling {
+			if err := validateImageCountBillingTarget(group.AllowImageGeneration, group.Platform); err != nil {
+				return nil, err
+			}
+		}
 		group.ImageCountBilling = *input.ImageCountBilling
 	}
 	if !group.AllowImageGeneration || (group.Platform != PlatformComposite && group.Platform != PlatformOpenAI) {

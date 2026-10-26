@@ -19720,6 +19720,8 @@ type CompositeModelRouteMutation struct {
 	endpoint        *string
 	priority        *int
 	addpriority     *int
+	weight          *int
+	addweight       *int
 	enabled         *bool
 	notes           *string
 	clearedFields   map[string]struct{}
@@ -20221,6 +20223,62 @@ func (m *CompositeModelRouteMutation) ResetPriority() {
 	m.addpriority = nil
 }
 
+// SetWeight sets the "weight" field.
+func (m *CompositeModelRouteMutation) SetWeight(i int) {
+	m.weight = &i
+	m.addweight = nil
+}
+
+// Weight returns the value of the "weight" field in the mutation.
+func (m *CompositeModelRouteMutation) Weight() (r int, exists bool) {
+	v := m.weight
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldWeight returns the old "weight" field's value of the CompositeModelRoute entity.
+// If the CompositeModelRoute object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CompositeModelRouteMutation) OldWeight(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldWeight is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldWeight requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldWeight: %w", err)
+	}
+	return oldValue.Weight, nil
+}
+
+// AddWeight adds i to the "weight" field.
+func (m *CompositeModelRouteMutation) AddWeight(i int) {
+	if m.addweight != nil {
+		*m.addweight += i
+	} else {
+		m.addweight = &i
+	}
+}
+
+// AddedWeight returns the value that was added to the "weight" field in this mutation.
+func (m *CompositeModelRouteMutation) AddedWeight() (r int, exists bool) {
+	v := m.addweight
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetWeight resets all changes to the "weight" field.
+func (m *CompositeModelRouteMutation) ResetWeight() {
+	m.weight = nil
+	m.addweight = nil
+}
+
 // SetEnabled sets the "enabled" field.
 func (m *CompositeModelRouteMutation) SetEnabled(b bool) {
 	m.enabled = &b
@@ -20367,7 +20425,7 @@ func (m *CompositeModelRouteMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *CompositeModelRouteMutation) Fields() []string {
-	fields := make([]string, 0, 12)
+	fields := make([]string, 0, 13)
 	if m.created_at != nil {
 		fields = append(fields, compositemodelroute.FieldCreatedAt)
 	}
@@ -20397,6 +20455,9 @@ func (m *CompositeModelRouteMutation) Fields() []string {
 	}
 	if m.priority != nil {
 		fields = append(fields, compositemodelroute.FieldPriority)
+	}
+	if m.weight != nil {
+		fields = append(fields, compositemodelroute.FieldWeight)
 	}
 	if m.enabled != nil {
 		fields = append(fields, compositemodelroute.FieldEnabled)
@@ -20432,6 +20493,8 @@ func (m *CompositeModelRouteMutation) Field(name string) (ent.Value, bool) {
 		return m.Endpoint()
 	case compositemodelroute.FieldPriority:
 		return m.Priority()
+	case compositemodelroute.FieldWeight:
+		return m.Weight()
 	case compositemodelroute.FieldEnabled:
 		return m.Enabled()
 	case compositemodelroute.FieldNotes:
@@ -20465,6 +20528,8 @@ func (m *CompositeModelRouteMutation) OldField(ctx context.Context, name string)
 		return m.OldEndpoint(ctx)
 	case compositemodelroute.FieldPriority:
 		return m.OldPriority(ctx)
+	case compositemodelroute.FieldWeight:
+		return m.OldWeight(ctx)
 	case compositemodelroute.FieldEnabled:
 		return m.OldEnabled(ctx)
 	case compositemodelroute.FieldNotes:
@@ -20548,6 +20613,13 @@ func (m *CompositeModelRouteMutation) SetField(name string, value ent.Value) err
 		}
 		m.SetPriority(v)
 		return nil
+	case compositemodelroute.FieldWeight:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetWeight(v)
+		return nil
 	case compositemodelroute.FieldEnabled:
 		v, ok := value.(bool)
 		if !ok {
@@ -20573,6 +20645,9 @@ func (m *CompositeModelRouteMutation) AddedFields() []string {
 	if m.addpriority != nil {
 		fields = append(fields, compositemodelroute.FieldPriority)
 	}
+	if m.addweight != nil {
+		fields = append(fields, compositemodelroute.FieldWeight)
+	}
 	return fields
 }
 
@@ -20583,6 +20658,8 @@ func (m *CompositeModelRouteMutation) AddedField(name string) (ent.Value, bool) 
 	switch name {
 	case compositemodelroute.FieldPriority:
 		return m.AddedPriority()
+	case compositemodelroute.FieldWeight:
+		return m.AddedWeight()
 	}
 	return nil, false
 }
@@ -20598,6 +20675,13 @@ func (m *CompositeModelRouteMutation) AddField(name string, value ent.Value) err
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddPriority(v)
+		return nil
+	case compositemodelroute.FieldWeight:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddWeight(v)
 		return nil
 	}
 	return fmt.Errorf("unknown CompositeModelRoute numeric field %s", name)
@@ -20670,6 +20754,9 @@ func (m *CompositeModelRouteMutation) ResetField(name string) error {
 		return nil
 	case compositemodelroute.FieldPriority:
 		m.ResetPriority()
+		return nil
+	case compositemodelroute.FieldWeight:
+		m.ResetWeight()
 		return nil
 	case compositemodelroute.FieldEnabled:
 		m.ResetEnabled()

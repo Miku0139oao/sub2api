@@ -66,6 +66,15 @@ func (CompositeModelRoute) Fields() []ent.Field {
 		field.Int("priority").
 			Default(100).
 			Comment("Lower values win within the same match strength."),
+		field.Int("weight").
+			Default(0).
+			Validate(func(v int) error {
+				if v < 0 {
+					return fmt.Errorf("weight must not be negative")
+				}
+				return nil
+			}).
+			Comment("Cross-platform load-balancing weight; 0 means failover-only."),
 		field.Bool("enabled").
 			Default(true),
 		field.String("notes").

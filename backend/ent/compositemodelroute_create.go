@@ -147,6 +147,20 @@ func (_c *CompositeModelRouteCreate) SetNillablePriority(v *int) *CompositeModel
 	return _c
 }
 
+// SetWeight sets the "weight" field.
+func (_c *CompositeModelRouteCreate) SetWeight(v int) *CompositeModelRouteCreate {
+	_c.mutation.SetWeight(v)
+	return _c
+}
+
+// SetNillableWeight sets the "weight" field if the given value is not nil.
+func (_c *CompositeModelRouteCreate) SetNillableWeight(v *int) *CompositeModelRouteCreate {
+	if v != nil {
+		_c.SetWeight(*v)
+	}
+	return _c
+}
+
 // SetEnabled sets the "enabled" field.
 func (_c *CompositeModelRouteCreate) SetEnabled(v bool) *CompositeModelRouteCreate {
 	_c.mutation.SetEnabled(v)
@@ -251,6 +265,10 @@ func (_c *CompositeModelRouteCreate) defaults() error {
 		v := compositemodelroute.DefaultPriority
 		_c.mutation.SetPriority(v)
 	}
+	if _, ok := _c.mutation.Weight(); !ok {
+		v := compositemodelroute.DefaultWeight
+		_c.mutation.SetWeight(v)
+	}
 	if _, ok := _c.mutation.Enabled(); !ok {
 		v := compositemodelroute.DefaultEnabled
 		_c.mutation.SetEnabled(v)
@@ -311,6 +329,14 @@ func (_c *CompositeModelRouteCreate) check() error {
 	}
 	if _, ok := _c.mutation.Priority(); !ok {
 		return &ValidationError{Name: "priority", err: errors.New(`ent: missing required field "CompositeModelRoute.priority"`)}
+	}
+	if _, ok := _c.mutation.Weight(); !ok {
+		return &ValidationError{Name: "weight", err: errors.New(`ent: missing required field "CompositeModelRoute.weight"`)}
+	}
+	if v, ok := _c.mutation.Weight(); ok {
+		if err := compositemodelroute.WeightValidator(v); err != nil {
+			return &ValidationError{Name: "weight", err: fmt.Errorf(`ent: validator failed for field "CompositeModelRoute.weight": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.Enabled(); !ok {
 		return &ValidationError{Name: "enabled", err: errors.New(`ent: missing required field "CompositeModelRoute.enabled"`)}
@@ -380,6 +406,10 @@ func (_c *CompositeModelRouteCreate) createSpec() (*CompositeModelRoute, *sqlgra
 	if value, ok := _c.mutation.Priority(); ok {
 		_spec.SetField(compositemodelroute.FieldPriority, field.TypeInt, value)
 		_node.Priority = value
+	}
+	if value, ok := _c.mutation.Weight(); ok {
+		_spec.SetField(compositemodelroute.FieldWeight, field.TypeInt, value)
+		_node.Weight = value
 	}
 	if value, ok := _c.mutation.Enabled(); ok {
 		_spec.SetField(compositemodelroute.FieldEnabled, field.TypeBool, value)
@@ -575,6 +605,24 @@ func (u *CompositeModelRouteUpsert) UpdatePriority() *CompositeModelRouteUpsert 
 // AddPriority adds v to the "priority" field.
 func (u *CompositeModelRouteUpsert) AddPriority(v int) *CompositeModelRouteUpsert {
 	u.Add(compositemodelroute.FieldPriority, v)
+	return u
+}
+
+// SetWeight sets the "weight" field.
+func (u *CompositeModelRouteUpsert) SetWeight(v int) *CompositeModelRouteUpsert {
+	u.Set(compositemodelroute.FieldWeight, v)
+	return u
+}
+
+// UpdateWeight sets the "weight" field to the value that was provided on create.
+func (u *CompositeModelRouteUpsert) UpdateWeight() *CompositeModelRouteUpsert {
+	u.SetExcluded(compositemodelroute.FieldWeight)
+	return u
+}
+
+// AddWeight adds v to the "weight" field.
+func (u *CompositeModelRouteUpsert) AddWeight(v int) *CompositeModelRouteUpsert {
+	u.Add(compositemodelroute.FieldWeight, v)
 	return u
 }
 
@@ -790,6 +838,27 @@ func (u *CompositeModelRouteUpsertOne) AddPriority(v int) *CompositeModelRouteUp
 func (u *CompositeModelRouteUpsertOne) UpdatePriority() *CompositeModelRouteUpsertOne {
 	return u.Update(func(s *CompositeModelRouteUpsert) {
 		s.UpdatePriority()
+	})
+}
+
+// SetWeight sets the "weight" field.
+func (u *CompositeModelRouteUpsertOne) SetWeight(v int) *CompositeModelRouteUpsertOne {
+	return u.Update(func(s *CompositeModelRouteUpsert) {
+		s.SetWeight(v)
+	})
+}
+
+// AddWeight adds v to the "weight" field.
+func (u *CompositeModelRouteUpsertOne) AddWeight(v int) *CompositeModelRouteUpsertOne {
+	return u.Update(func(s *CompositeModelRouteUpsert) {
+		s.AddWeight(v)
+	})
+}
+
+// UpdateWeight sets the "weight" field to the value that was provided on create.
+func (u *CompositeModelRouteUpsertOne) UpdateWeight() *CompositeModelRouteUpsertOne {
+	return u.Update(func(s *CompositeModelRouteUpsert) {
+		s.UpdateWeight()
 	})
 }
 
@@ -1176,6 +1245,27 @@ func (u *CompositeModelRouteUpsertBulk) AddPriority(v int) *CompositeModelRouteU
 func (u *CompositeModelRouteUpsertBulk) UpdatePriority() *CompositeModelRouteUpsertBulk {
 	return u.Update(func(s *CompositeModelRouteUpsert) {
 		s.UpdatePriority()
+	})
+}
+
+// SetWeight sets the "weight" field.
+func (u *CompositeModelRouteUpsertBulk) SetWeight(v int) *CompositeModelRouteUpsertBulk {
+	return u.Update(func(s *CompositeModelRouteUpsert) {
+		s.SetWeight(v)
+	})
+}
+
+// AddWeight adds v to the "weight" field.
+func (u *CompositeModelRouteUpsertBulk) AddWeight(v int) *CompositeModelRouteUpsertBulk {
+	return u.Update(func(s *CompositeModelRouteUpsert) {
+		s.AddWeight(v)
+	})
+}
+
+// UpdateWeight sets the "weight" field to the value that was provided on create.
+func (u *CompositeModelRouteUpsertBulk) UpdateWeight() *CompositeModelRouteUpsertBulk {
+	return u.Update(func(s *CompositeModelRouteUpsert) {
+		s.UpdateWeight()
 	})
 }
 

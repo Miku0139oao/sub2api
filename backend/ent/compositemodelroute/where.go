@@ -105,6 +105,11 @@ func Priority(v int) predicate.CompositeModelRoute {
 	return predicate.CompositeModelRoute(sql.FieldEQ(FieldPriority, v))
 }
 
+// Weight applies equality check predicate on the "weight" field. It's identical to WeightEQ.
+func Weight(v int) predicate.CompositeModelRoute {
+	return predicate.CompositeModelRoute(sql.FieldEQ(FieldWeight, v))
+}
+
 // Enabled applies equality check predicate on the "enabled" field. It's identical to EnabledEQ.
 func Enabled(v bool) predicate.CompositeModelRoute {
 	return predicate.CompositeModelRoute(sql.FieldEQ(FieldEnabled, v))
@@ -628,6 +633,46 @@ func PriorityLT(v int) predicate.CompositeModelRoute {
 // PriorityLTE applies the LTE predicate on the "priority" field.
 func PriorityLTE(v int) predicate.CompositeModelRoute {
 	return predicate.CompositeModelRoute(sql.FieldLTE(FieldPriority, v))
+}
+
+// WeightEQ applies the EQ predicate on the "weight" field.
+func WeightEQ(v int) predicate.CompositeModelRoute {
+	return predicate.CompositeModelRoute(sql.FieldEQ(FieldWeight, v))
+}
+
+// WeightNEQ applies the NEQ predicate on the "weight" field.
+func WeightNEQ(v int) predicate.CompositeModelRoute {
+	return predicate.CompositeModelRoute(sql.FieldNEQ(FieldWeight, v))
+}
+
+// WeightIn applies the In predicate on the "weight" field.
+func WeightIn(vs ...int) predicate.CompositeModelRoute {
+	return predicate.CompositeModelRoute(sql.FieldIn(FieldWeight, vs...))
+}
+
+// WeightNotIn applies the NotIn predicate on the "weight" field.
+func WeightNotIn(vs ...int) predicate.CompositeModelRoute {
+	return predicate.CompositeModelRoute(sql.FieldNotIn(FieldWeight, vs...))
+}
+
+// WeightGT applies the GT predicate on the "weight" field.
+func WeightGT(v int) predicate.CompositeModelRoute {
+	return predicate.CompositeModelRoute(sql.FieldGT(FieldWeight, v))
+}
+
+// WeightGTE applies the GTE predicate on the "weight" field.
+func WeightGTE(v int) predicate.CompositeModelRoute {
+	return predicate.CompositeModelRoute(sql.FieldGTE(FieldWeight, v))
+}
+
+// WeightLT applies the LT predicate on the "weight" field.
+func WeightLT(v int) predicate.CompositeModelRoute {
+	return predicate.CompositeModelRoute(sql.FieldLT(FieldWeight, v))
+}
+
+// WeightLTE applies the LTE predicate on the "weight" field.
+func WeightLTE(v int) predicate.CompositeModelRoute {
+	return predicate.CompositeModelRoute(sql.FieldLTE(FieldWeight, v))
 }
 
 // EnabledEQ applies the EQ predicate on the "enabled" field.

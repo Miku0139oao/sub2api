@@ -1,6 +1,15 @@
 // 腾讯天御验证码站点：cn=中国站（cloud.tencent.com），intl=国际站（tencentcloud.com）。
 // 两个站点的 CaptchaAppId 不互通，SDK 脚本与服务端校验接入点都必须成对使用。
+import { isChineseLocale, isTraditionalChineseLocale } from '@/i18n/locale'
+
 export type TencentCaptchaRegion = 'cn' | 'intl'
+
+export type TencentCaptchaLanguage = 'zh-cn' | 'zh-tw' | 'en'
+
+export function tencentCaptchaLanguage(locale: string | null | undefined): TencentCaptchaLanguage {
+  if (isTraditionalChineseLocale(locale)) return 'zh-tw'
+  return isChineseLocale(locale) ? 'zh-cn' : 'en'
+}
 
 export interface TencentCaptchaProof {
   ticket: string

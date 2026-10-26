@@ -35,6 +35,8 @@ const (
 	FieldEndpoint = "endpoint"
 	// FieldPriority holds the string denoting the priority field in the database.
 	FieldPriority = "priority"
+	// FieldWeight holds the string denoting the weight field in the database.
+	FieldWeight = "weight"
 	// FieldEnabled holds the string denoting the enabled field in the database.
 	FieldEnabled = "enabled"
 	// FieldNotes holds the string denoting the notes field in the database.
@@ -65,6 +67,7 @@ var Columns = []string{
 	FieldUpstreamModel,
 	FieldEndpoint,
 	FieldPriority,
+	FieldWeight,
 	FieldEnabled,
 	FieldNotes,
 }
@@ -113,6 +116,10 @@ var (
 	EndpointValidator func(string) error
 	// DefaultPriority holds the default value on creation for the "priority" field.
 	DefaultPriority int
+	// DefaultWeight holds the default value on creation for the "weight" field.
+	DefaultWeight int
+	// WeightValidator is a validator for the "weight" field. It is called by the builders before save.
+	WeightValidator func(int) error
 	// DefaultEnabled holds the default value on creation for the "enabled" field.
 	DefaultEnabled bool
 )
@@ -173,6 +180,11 @@ func ByEndpoint(opts ...sql.OrderTermOption) OrderOption {
 // ByPriority orders the results by the priority field.
 func ByPriority(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPriority, opts...).ToFunc()
+}
+
+// ByWeight orders the results by the weight field.
+func ByWeight(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldWeight, opts...).ToFunc()
 }
 
 // ByEnabled orders the results by the enabled field.

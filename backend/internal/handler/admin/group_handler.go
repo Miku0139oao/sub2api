@@ -343,8 +343,11 @@ type CompositeRouteRequest struct {
 	UpstreamModel  string `json:"upstream_model"`
 	Endpoint       string `json:"endpoint" binding:"omitempty,oneof=any messages count_tokens responses chat_completions embeddings images gemini"`
 	Priority       int    `json:"priority"`
-	Enabled        *bool  `json:"enabled"`
-	Notes          string `json:"notes"`
+	// Weight opts the route into cross-platform load balancing. 0 keeps it
+	// failover-only, which is the default and preserves existing behaviour.
+	Weight  int   `json:"weight" binding:"omitempty,min=0"`
+	Enabled *bool `json:"enabled"`
+	Notes   string `json:"notes"`
 }
 
 type CompositeRoutePreviewRequest struct {
@@ -527,6 +530,7 @@ func compositeRouteRequestToInput(req CompositeRouteRequest, defaultEnabled bool
 		UpstreamModel:  req.UpstreamModel,
 		Endpoint:       req.Endpoint,
 		Priority:       req.Priority,
+		Weight:         req.Weight,
 		Enabled:        enabled,
 		Notes:          req.Notes,
 	}

@@ -49,6 +49,7 @@ func (r *compositeModelRouteRepository) Create(ctx context.Context, route *servi
 		SetUpstreamModel(route.UpstreamModel).
 		SetEndpoint(route.Endpoint).
 		SetPriority(route.Priority).
+		SetWeight(route.Weight).
 		SetEnabled(route.Enabled).
 		SetNotes(route.Notes).
 		Save(ctx)
@@ -70,6 +71,7 @@ func (r *compositeModelRouteRepository) Update(ctx context.Context, route *servi
 		SetUpstreamModel(route.UpstreamModel).
 		SetEndpoint(route.Endpoint).
 		SetPriority(route.Priority).
+		SetWeight(route.Weight).
 		SetEnabled(route.Enabled).
 		SetNotes(route.Notes).
 		Save(ctx)
@@ -105,6 +107,7 @@ func compositeModelRouteEntityToService(row *dbent.CompositeModelRoute) *service
 		UpstreamModel:  row.UpstreamModel,
 		Endpoint:       row.Endpoint,
 		Priority:       row.Priority,
+		Weight:         row.Weight,
 		Enabled:        row.Enabled,
 		Notes:          derefString(row.Notes),
 		CreatedAt:      row.CreatedAt,

@@ -436,10 +436,11 @@ func finalizePostUsageBilling(ctx context.Context, p *postUsageBillingParams, de
 		if deps.billingCacheService.HasUserPlatformQuotaLimit(ctx, p.User.ID, p.Platform) {
 			deps.billingCacheService.IncrementUserPlatformQuotaUsage(p.User.ID, p.Platform, p.Cost.ActualCost)
 			if deps.cfg == nil || !deps.cfg.Database.UserPlatformQuotaFlusherEnabled {
-				// 降级路径:flusher 未启用时保留原有异步直写 DB
+				// 降级路径:flusher 未启用时保留原有异步直写 DB。
+				// 并发受 tryRunPostBilling 限制；超限时仍同步执行，配额落库不能静默丢。
 				dbCtx, dbCancel := detachUpstreamContext(ctx)
 				userID, platform, cost := p.User.ID, p.Platform, p.Cost.ActualCost
-				go func() {
+				writeQuota := func() {
 					defer func() {
 						if r := recover(); r != nil {
 							logger.LegacyPrintf("service.gateway", "ALERT: panic in user platform quota incr goroutine user=%d platform=%s: %v", userID, platform, r)
@@ -453,7 +454,11 @@ func finalizePostUsageBilling(ctx context.Context, p *postUsageBillingParams, de
 						// 用户配额视图与实际消费会偏差,oncall 需要据此对账或人工补录。
 						logger.LegacyPrintf("service.gateway", "ALERT: incr user platform quota DB failed user=%d platform=%s cost=%f: %v", userID, platform, cost, err)
 					}
-				}()
+				}
+				if !tryRunPostBilling(writeQuota) {
+					logger.LegacyPrintf("service.gateway", "user platform quota incr running inline (concurrency limit reached) user=%d platform=%s", userID, platform)
+					writeQuota()
+				}
 			}
 			// flusher_enabled=true:不直写 DB,flusher 异步批量刷
 		}
@@ -461,8 +466,19 @@ func finalizePostUsageBilling(ctx context.Context, p *postUsageBillingParams, de
 
 	// Notification checks run async — all parameters are already captured,
 	// no dependency on the request context or upstream connection.
-	go notifyBalanceLow(p, deps, result)
-	go notifyAccountQuota(p, deps, result)
+	// 并发有上限；超限时同步执行，通知不能因限流静默丢失。
+	runPostBillingNotifications := func() {
+		notifyBalanceLow(p, deps, result)
+		notifyAccountQuota(p, deps, result)
+	}
+	if !tryRunPostBilling(runPostBillingNotifications) {
+		userID := int64(0)
+		if p.User != nil {
+			userID = p.User.ID
+		}
+		logger.LegacyPrintf("service.gateway", "post-billing notifications running inline (concurrency limit reached) user=%d", userID)
+		runPostBillingNotifications()
+	}
 }
 
 func syncBalanceCacheAfterDeduction(ctx context.Context, p *postUsageBillingParams, deps *billingDeps, result *UsageBillingApplyResult) {
@@ -1163,6 +1179,9 @@ func (s *GatewayService) resolveChannelPricing(ctx context.Context, billingModel
 }
 
 // calculateImageCost 计算图片生成费用：渠道级别定价优先，否则走按次计费。
+//
+// 一次响应里出现多个尺寸档（例如 1×1K + 1×4K）时逐档计价；只按最高档乘总张数会
+// 把 1K 的图按 4K 结算。分档数据缺失或张数对不上时回退到原来的单档行为。
 func (s *GatewayService) calculateImageCost(
 	ctx context.Context,
 	result *ForwardResult,
@@ -1171,6 +1190,33 @@ func (s *GatewayService) calculateImageCost(
 	multiplier float64,
 ) *CostBreakdown {
 	sizeTier := NormalizeImageBillingTierOrDefault(result.ImageSize)
+	// token 定价按整条请求结算，拆档会把同一份 token 费用重复累加；只有真正按张
+	// 结算的请求（按次/图片模式、分组图片价、开关强制按张）才逐档计价。
+	forcePerImage := imageCountBillingApplies(apiKey, result.ImageEndpoint)
+	if !imageCostUsesTokenBilling(s.resolveChannelPricing(ctx, billingModel, apiKey), forcePerImage) {
+		tierCounts := imageBillingTierCounts(result.ImageSizeBreakdown, result.ImageCount)
+		if tierCounts != nil {
+			cost, err := forEachImageBillingTier(tierCounts, func(tier string, count int) (*CostBreakdown, error) {
+				return s.calculateImageCostForTier(ctx, result, apiKey, billingModel, multiplier, tier, count), nil
+			})
+			if err == nil && cost != nil {
+				return cost
+			}
+		}
+	}
+	return s.calculateImageCostForTier(ctx, result, apiKey, billingModel, multiplier, sizeTier, result.ImageCount)
+}
+
+// calculateImageCostForTier 按单一尺寸档结算 count 张图片。
+func (s *GatewayService) calculateImageCostForTier(
+	ctx context.Context,
+	result *ForwardResult,
+	apiKey *APIKey,
+	billingModel string,
+	multiplier float64,
+	sizeTier string,
+	imageCount int,
+) *CostBreakdown {
 	forcePerImage := imageCountBillingApplies(apiKey, result.ImageEndpoint)
 	resolved := s.resolveChannelPricing(ctx, billingModel, apiKey)
 	// 分组定价只有按次/图片模式才能按张结算。token 模式缺少 token 输入时会算出
@@ -1180,7 +1226,7 @@ func (s *GatewayService) calculateImageCost(
 		gid := apiKey.Group.ID
 		cost, err := s.billingService.CalculateCostUnified(CostInput{
 			Ctx: ctx, Model: billingModel, GroupID: &gid, Group: apiKey.Group,
-			RequestCount: result.ImageCount, SizeTier: sizeTier,
+			RequestCount: imageCount, SizeTier: sizeTier,
 			RateMultiplier: multiplier, Resolver: s.resolver, Resolved: resolved,
 			ReasoningEffort: optionalStringValue(result.ReasoningEffort),
 		})
@@ -1190,7 +1236,7 @@ func (s *GatewayService) calculateImageCost(
 	}
 	groupConfig := imagePriceConfigFromAPIKey(apiKey)
 	if apiKeyHasConfiguredImagePrice(apiKey, sizeTier) {
-		return s.billingService.CalculateImageCost(billingModel, sizeTier, result.ImageCount, groupConfig, multiplier)
+		return s.billingService.CalculateImageCost(billingModel, sizeTier, imageCount, groupConfig, multiplier)
 	}
 	if resolved != nil && resolved.Source == PricingSourceChannel {
 		tokens := UsageTokens{
@@ -1209,7 +1255,7 @@ func (s *GatewayService) calculateImageCost(
 				GroupID:         &gid,
 				Group:           apiKey.Group,
 				Tokens:          tokens,
-				RequestCount:    result.ImageCount,
+				RequestCount:    imageCount,
 				SizeTier:        sizeTier,
 				ReasoningEffort: optionalStringValue(result.ReasoningEffort),
 				RateMultiplier:  multiplier,
@@ -1230,7 +1276,7 @@ func (s *GatewayService) calculateImageCost(
 				GroupID:         &gid,
 				Group:           apiKey.Group,
 				Tokens:          tokens,
-				RequestCount:    result.ImageCount,
+				RequestCount:    imageCount,
 				SizeTier:        sizeTier,
 				ReasoningEffort: optionalStringValue(result.ReasoningEffort),
 				RateMultiplier:  multiplier,
@@ -1246,7 +1292,7 @@ func (s *GatewayService) calculateImageCost(
 		// token 模式 + 开关强制按张：跳过 token 分支，落到下面的按张计费。
 	}
 
-	return s.billingService.CalculateImageCost(billingModel, sizeTier, result.ImageCount, groupConfig, multiplier)
+	return s.billingService.CalculateImageCost(billingModel, sizeTier, imageCount, groupConfig, multiplier)
 }
 
 // calculateTokenCost 计算 Token 计费：路径选择（分组/渠道定价 → 内置定价）

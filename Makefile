@@ -2,6 +2,13 @@
 
 FRONTEND_CRITICAL_VITEST := \
 	src/i18n/__tests__/localeKeyCompleteness.spec.ts \
+	src/i18n/__tests__/zhTwPlaceholders.spec.ts \
+	src/i18n/__tests__/localeHelpers.spec.ts \
+	src/i18n/__tests__/legalDocuments.spec.ts \
+	src/components/common/__tests__/LocaleSwitcher.spec.ts \
+	src/components/admin/group/__tests__/GroupI18nField.spec.ts \
+	src/stores/__tests__/adminCompliance.reset.spec.ts \
+	src/views/admin/__tests__/settingsNoInlineLocale.spec.ts \
 	src/api/__tests__/client.spec.ts \
 	src/api/__tests__/tokenRefresh.spec.ts \
 	src/api/__tests__/keys.bulkUpdate.spec.ts \
@@ -52,6 +59,7 @@ test-backend:
 test-frontend:
 	@pnpm --dir frontend run lint:check
 	@pnpm --dir frontend run typecheck
+	@pnpm --dir frontend run i18n:zh-tw:check
 	@$(MAKE) test-frontend-critical
 
 test-frontend-critical:

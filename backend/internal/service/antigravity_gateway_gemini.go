@@ -470,7 +470,7 @@ handleSuccess:
 		Duration:                      time.Since(startTime),
 		FirstTokenMs:                  firstTokenMs,
 		ClientDisconnect:              clientDisconnect,
-		ImageEndpoint:                 imageCount > 0,
+		ImageEndpoint:                 geminiRequestIsImageEndpoint(injectedBody, originalModel, mappedModel),
 		ImageCount:                    imageCount,
 		ImageSize:                     imageSize,
 		ImageInputSize:                imageInputSize,

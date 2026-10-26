@@ -1,30 +1,37 @@
 import { createI18n } from 'vue-i18n'
 
-type LocaleCode = 'en' | 'zh'
+import {
+  DEFAULT_LOCALE,
+  LOCALE_STORAGE_KEY,
+  isLocaleCode,
+  normalizeLocaleCode,
+  type LocaleCode,
+} from './locale'
 
 type LocaleMessages = Record<string, any>
 
-const LOCALE_KEY = 'sub2api_locale'
-const DEFAULT_LOCALE: LocaleCode = 'en'
-
 const localeLoaders: Record<LocaleCode, () => Promise<{ default: LocaleMessages }>> = {
   en: () => import('./locales/en'),
-  zh: () => import('./locales/zh')
-}
-
-function isLocaleCode(value: string): value is LocaleCode {
-  return value === 'en' || value === 'zh'
+  zh: () => import('./locales/zh'),
+  'zh-TW': () => import('./locales/zh-TW'),
 }
 
 function getDefaultLocale(): LocaleCode {
-  const saved = localStorage.getItem(LOCALE_KEY)
-  if (saved && isLocaleCode(saved)) {
-    return saved
+  const saved = localStorage.getItem(LOCALE_STORAGE_KEY)
+  const savedLocale = normalizeLocaleCode(saved)
+  if (savedLocale) {
+    return savedLocale
   }
 
-  const browserLang = navigator.language.toLowerCase()
-  if (browserLang.startsWith('zh')) {
-    return 'zh'
+  const browserLanguages = [
+    ...(Array.isArray(navigator.languages) ? navigator.languages : []),
+    navigator.language,
+  ]
+  for (const language of browserLanguages) {
+    const locale = normalizeLocaleCode(language)
+    if (locale) {
+      return locale
+    }
   }
 
   return DEFAULT_LOCALE
@@ -37,7 +44,7 @@ export const i18n = createI18n({
   messages: {},
   // 禁用 HTML 消息警告 - 引导步骤使用富文本内容（driver.js 支持 HTML）
   // 这些内容是内部定义的，不存在 XSS 风险
-  warnHtmlMessage: false
+  warnHtmlMessage: false,
 })
 
 const loadedLocales = new Set<LocaleCode>()
@@ -60,14 +67,15 @@ export async function initI18n(): Promise<void> {
 }
 
 export async function setLocale(locale: string): Promise<void> {
-  if (!isLocaleCode(locale)) {
+  const normalized = normalizeLocaleCode(locale)
+  if (!normalized || !isLocaleCode(normalized)) {
     return
   }
 
-  await loadLocaleMessages(locale)
-  i18n.global.locale.value = locale
-  localStorage.setItem(LOCALE_KEY, locale)
-  document.documentElement.setAttribute('lang', locale)
+  await loadLocaleMessages(normalized)
+  i18n.global.locale.value = normalized
+  localStorage.setItem(LOCALE_STORAGE_KEY, normalized)
+  document.documentElement.setAttribute('lang', normalized)
 
   // 同步更新浏览器页签标题，使其跟随语言切换
   const { resolveRouteDocumentTitle } = await import('@/router/title')
@@ -87,13 +95,14 @@ export async function setLocale(locale: string): Promise<void> {
 }
 
 export function getLocale(): LocaleCode {
-  const current = i18n.global.locale.value
-  return isLocaleCode(current) ? current : DEFAULT_LOCALE
+  return normalizeLocaleCode(i18n.global.locale.value) ?? DEFAULT_LOCALE
 }
 
 export const availableLocales = [
   { code: 'en', name: 'English', flag: '🇺🇸' },
-  { code: 'zh', name: '中文', flag: '🇨🇳' }
+  { code: 'zh', name: '简体中文', flag: '🇨🇳' },
+  { code: 'zh-TW', name: '繁體中文', flag: '🇹🇼' },
 ] as const
 
+export type { LocaleCode }
 export default i18n

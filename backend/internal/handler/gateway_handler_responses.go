@@ -186,11 +186,16 @@ func (h *GatewayHandler) Responses(c *gin.Context) {
 
 	// 3. Account selection + failover loop
 	fs := NewFailoverState(h.maxAccountSwitches, false)
+	compositePlatformSwitches := 0
 
 	for {
 		if failoverClientGone(c) {
 			return
 		}
+		// 跨平台 failover 会改写 c.Request 的 context（目标平台 / 上游模型 /
+		// 候选请求体），requestCtx 是循环外捕获的，必须每轮重新取，否则切换
+		// 之后选号与转发仍然使用旧平台。
+		requestCtx = c.Request.Context()
 		selection, err := h.gatewayService.SelectAccountWithLoadAwareness(requestCtx, apiKey.GroupID, sessionHash, reqModel, fs.FailedAccountIDs, "", int64(0))
 		if err != nil {
 			if failoverClientGone(c) {
@@ -219,6 +224,9 @@ func (h *GatewayHandler) Responses(c *gin.Context) {
 				return
 			default:
 				if fs.LastFailoverErr != nil {
+					if h.advanceAnthropicCompositePlatform(c, apiKey, fs, streamStarted, &compositePlatformSwitches, c.Writer.Size(), sessionHash, channelMapping, reqModel) {
+						continue
+					}
 					h.handleResponsesFailoverExhausted(c, fs.LastFailoverErr, streamStarted)
 				} else {
 					h.responsesErrorResponse(c, http.StatusBadGateway, "server_error", "All available accounts exhausted")
@@ -282,6 +290,9 @@ func (h *GatewayHandler) Responses(c *gin.Context) {
 		forwardBody := body
 		if channelMapping.Mapped {
 			forwardBody = h.gatewayService.ReplaceModelInBody(body, channelMapping.MappedModel)
+		}
+		if compositeBody, compositeOK := service.CompositeAttemptBodyFromContext(requestCtx); compositeOK {
+			forwardBody = compositeBody
 		}
 		var result *service.ForwardResult
 		setActualUpstreamEndpoint(c, "")

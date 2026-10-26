@@ -160,6 +160,27 @@ func (_u *CompositeModelRouteUpdate) AddPriority(v int) *CompositeModelRouteUpda
 	return _u
 }
 
+// SetWeight sets the "weight" field.
+func (_u *CompositeModelRouteUpdate) SetWeight(v int) *CompositeModelRouteUpdate {
+	_u.mutation.ResetWeight()
+	_u.mutation.SetWeight(v)
+	return _u
+}
+
+// SetNillableWeight sets the "weight" field if the given value is not nil.
+func (_u *CompositeModelRouteUpdate) SetNillableWeight(v *int) *CompositeModelRouteUpdate {
+	if v != nil {
+		_u.SetWeight(*v)
+	}
+	return _u
+}
+
+// AddWeight adds value to the "weight" field.
+func (_u *CompositeModelRouteUpdate) AddWeight(v int) *CompositeModelRouteUpdate {
+	_u.mutation.AddWeight(v)
+	return _u
+}
+
 // SetEnabled sets the "enabled" field.
 func (_u *CompositeModelRouteUpdate) SetEnabled(v bool) *CompositeModelRouteUpdate {
 	_u.mutation.SetEnabled(v)
@@ -279,6 +300,11 @@ func (_u *CompositeModelRouteUpdate) check() error {
 			return &ValidationError{Name: "endpoint", err: fmt.Errorf(`ent: validator failed for field "CompositeModelRoute.endpoint": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.Weight(); ok {
+		if err := compositemodelroute.WeightValidator(v); err != nil {
+			return &ValidationError{Name: "weight", err: fmt.Errorf(`ent: validator failed for field "CompositeModelRoute.weight": %w`, err)}
+		}
+	}
 	if _u.mutation.GroupCleared() && len(_u.mutation.GroupIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "CompositeModelRoute.group"`)
 	}
@@ -326,6 +352,12 @@ func (_u *CompositeModelRouteUpdate) sqlSave(ctx context.Context) (_node int, er
 	}
 	if value, ok := _u.mutation.AddedPriority(); ok {
 		_spec.AddField(compositemodelroute.FieldPriority, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.Weight(); ok {
+		_spec.SetField(compositemodelroute.FieldWeight, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedWeight(); ok {
+		_spec.AddField(compositemodelroute.FieldWeight, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.Enabled(); ok {
 		_spec.SetField(compositemodelroute.FieldEnabled, field.TypeBool, value)
@@ -516,6 +548,27 @@ func (_u *CompositeModelRouteUpdateOne) AddPriority(v int) *CompositeModelRouteU
 	return _u
 }
 
+// SetWeight sets the "weight" field.
+func (_u *CompositeModelRouteUpdateOne) SetWeight(v int) *CompositeModelRouteUpdateOne {
+	_u.mutation.ResetWeight()
+	_u.mutation.SetWeight(v)
+	return _u
+}
+
+// SetNillableWeight sets the "weight" field if the given value is not nil.
+func (_u *CompositeModelRouteUpdateOne) SetNillableWeight(v *int) *CompositeModelRouteUpdateOne {
+	if v != nil {
+		_u.SetWeight(*v)
+	}
+	return _u
+}
+
+// AddWeight adds value to the "weight" field.
+func (_u *CompositeModelRouteUpdateOne) AddWeight(v int) *CompositeModelRouteUpdateOne {
+	_u.mutation.AddWeight(v)
+	return _u
+}
+
 // SetEnabled sets the "enabled" field.
 func (_u *CompositeModelRouteUpdateOne) SetEnabled(v bool) *CompositeModelRouteUpdateOne {
 	_u.mutation.SetEnabled(v)
@@ -648,6 +701,11 @@ func (_u *CompositeModelRouteUpdateOne) check() error {
 			return &ValidationError{Name: "endpoint", err: fmt.Errorf(`ent: validator failed for field "CompositeModelRoute.endpoint": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.Weight(); ok {
+		if err := compositemodelroute.WeightValidator(v); err != nil {
+			return &ValidationError{Name: "weight", err: fmt.Errorf(`ent: validator failed for field "CompositeModelRoute.weight": %w`, err)}
+		}
+	}
 	if _u.mutation.GroupCleared() && len(_u.mutation.GroupIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "CompositeModelRoute.group"`)
 	}
@@ -712,6 +770,12 @@ func (_u *CompositeModelRouteUpdateOne) sqlSave(ctx context.Context) (_node *Com
 	}
 	if value, ok := _u.mutation.AddedPriority(); ok {
 		_spec.AddField(compositemodelroute.FieldPriority, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.Weight(); ok {
+		_spec.SetField(compositemodelroute.FieldWeight, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedWeight(); ok {
+		_spec.AddField(compositemodelroute.FieldWeight, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.Enabled(); ok {
 		_spec.SetField(compositemodelroute.FieldEnabled, field.TypeBool, value)

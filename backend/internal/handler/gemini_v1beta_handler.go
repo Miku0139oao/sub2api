@@ -790,6 +790,8 @@ func (h *GatewayHandler) GeminiV1BetaModels(c *gin.Context) {
 		}
 
 		// 使用量记录通过有界 worker 池提交，避免请求热路径创建无界 goroutine。
+		// 产出图片的请求必须走强制提交：worker 池配置 drop/sample 溢出策略时，
+		// 普通任务会被丢弃，生图请求会静默漏计费。与 openai_images 保持同一口径。
 		requestPayloadHash := service.HashUsageRequestPayload(body)
 		inboundEndpoint := GetInboundEndpoint(c)
 		upstreamEndpoint := GetUpstreamEndpoint(c, account.Platform)
@@ -798,7 +800,11 @@ func (h *GatewayHandler) GeminiV1BetaModels(c *gin.Context) {
 		quotaPlatform := service.QuotaPlatform(c.Request.Context(), apiKey)
 		sessionID := service.ExtractClientSessionID(c)
 		// 长上下文阶梯由目录数据驱动，统一在计费路径内生效，入口无需声明。
-		h.submitUsageRecordTask(c.Request.Context(), func(ctx context.Context) {
+		submitUsageRecord := h.submitUsageRecordTask
+		if result != nil && (result.ImageCount > 0 || result.AudioUsage != nil) {
+			submitUsageRecord = h.submitMandatoryUsageRecordTask
+		}
+		submitUsageRecord(c.Request.Context(), func(ctx context.Context) {
 			if err := h.gatewayService.RecordUsage(ctx, &service.RecordUsageInput{
 				Result:             result,
 				QuotaPlatform:      quotaPlatform,

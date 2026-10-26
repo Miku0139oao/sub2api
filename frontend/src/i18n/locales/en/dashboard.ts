@@ -1034,7 +1034,8 @@ export default {
     serverError: 'Server error',
     networkError: 'Network error',
     timeout: 'Request timeout',
-    tryAgain: 'Please try again'
+    tryAgain: 'Please try again',
+    accountListIncomplete: 'The account list is incomplete'
   },
 
   // Dates

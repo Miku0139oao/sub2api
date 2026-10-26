@@ -2,6 +2,7 @@
 export default {
   channelMonitorV2: {
     title: 'Channel Monitor',
+    axisFallback: 'Time pulse',
     updating: 'Updating data',
     updatedTo: 'Updated to {time}',
     partialCoverage: 'Partial historical coverage',

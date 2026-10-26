@@ -429,7 +429,7 @@
                   @click="addPresetMapping(preset.from, preset.to)"
                   :class="['rounded-lg px-3 py-1 text-xs transition-colors', preset.color]"
                 >
-                  + {{ preset.label }}
+                  + {{ localizeModelPresetLabel(preset.label, t) }}
                 </button>
               </div>
             </div>
@@ -924,7 +924,7 @@
                 @click="addPresetMapping(preset.from, preset.to)"
                 :class="['rounded-lg px-3 py-1 text-xs transition-colors', preset.color]"
               >
-                + {{ preset.label }}
+                + {{ localizeModelPresetLabel(preset.label, t) }}
               </button>
             </div>
           </div>
@@ -1185,7 +1185,7 @@
                 @click="addPresetMapping(preset.from, preset.to)"
                 :class="['rounded-lg px-3 py-1 text-xs transition-colors', preset.color]"
               >
-                + {{ preset.label }}
+                + {{ localizeModelPresetLabel(preset.label, t) }}
               </button>
             </div>
           </div>
@@ -1327,7 +1327,7 @@
                 @click="modelMappings.push({ from: preset.from, to: preset.to })"
                 :class="['rounded-lg px-3 py-1 text-xs transition-colors', preset.color]"
               >
-                + {{ preset.label }}
+                + {{ localizeModelPresetLabel(preset.label, t) }}
               </button>
             </div>
           </div>
@@ -1508,7 +1508,7 @@
               @click="addAntigravityPresetMapping(preset.from, preset.to)"
               :class="['rounded-lg px-3 py-1 text-xs transition-colors', preset.color]"
             >
-              + {{ preset.label }}
+              + {{ localizeModelPresetLabel(preset.label, t) }}
             </button>
           </div>
         </div>
@@ -1556,7 +1556,7 @@
               @click="addTempUnschedRule(preset.rule)"
               class="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-300 dark:hover:bg-dark-500"
             >
-              + {{ preset.label }}
+              + {{ localizeModelPresetLabel(preset.label, t) }}
             </button>
           </div>
 
@@ -3332,6 +3332,7 @@ import {
 } from '@/utils/openaiWsMode'
 import {
   getPresetMappingsByPlatform,
+  localizeModelPresetLabel,
   commonErrorCodes,
   buildModelMappingObject,
   splitModelMappingObject,

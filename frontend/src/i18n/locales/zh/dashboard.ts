@@ -1038,7 +1038,8 @@ export default {
     serverError: '服务器错误',
     networkError: '网络错误',
     timeout: '请求超时',
-    tryAgain: '请重试'
+    tryAgain: '请重试',
+    accountListIncomplete: '账号列表结果不完整'
   },
 
   // Dates

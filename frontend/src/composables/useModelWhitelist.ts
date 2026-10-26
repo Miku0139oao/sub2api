@@ -548,6 +548,14 @@ export function getPresetMappingsByPlatform(platform: string) {
   return anthropicPresetMappings
 }
 
+// 预设标签里的「透传」是中文后缀，需要跟随界面语言；其余标签原样返回。
+export function localizeModelPresetLabel(label: string, translate: (key: string) => string): string {
+  return label.replace(/透传$/, () => {
+    const suffix = translate('common.passthroughSuffix')
+    return /^[A-Za-z]/.test(suffix) ? ` ${suffix}` : suffix
+  })
+}
+
 // =====================
 // 构建模型映射对象（用于 API）
 // =====================

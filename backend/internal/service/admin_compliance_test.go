@@ -62,7 +62,63 @@ func TestAdminComplianceStatusRequiresAckWhenMissing(t *testing.T) {
 	require.True(t, status.Required)
 	require.Equal(t, AdminComplianceVersion, status.Version)
 	require.Equal(t, AdminComplianceAckPhraseZH, status.AckPhraseZH)
+	require.Equal(t, AdminComplianceAckPhraseZHTW, status.AckPhraseZHTW)
 	require.Equal(t, AdminComplianceDocumentPathZH, status.DocumentPathZH)
+	require.Equal(t, AdminComplianceDocumentPathZHTW, status.DocumentPathZHTW)
+	require.Equal(t, AdminComplianceDocumentURLZHTW, status.DocumentURLZHTW)
+}
+
+func TestNormalizeAdminComplianceLanguage(t *testing.T) {
+	cases := map[string]string{
+		"zh-TW":                "zh-TW",
+		"zh-tw":                "zh-TW",
+		"ZH_TW":                "zh-TW",
+		"zh-Hant":              "zh-TW",
+		"zh-Hant-HK":           "zh-TW",
+		"zh-HK":                "zh-TW",
+		"zh-MO":                "zh-TW",
+		"zh-TW,zh;q=0.9":       "zh-TW",
+		"zh-TW;q=0.9,en;q=0.8": "zh-TW",
+		"zh":                   "zh",
+		"zh-CN":                "zh",
+		"zh-Hans":              "zh",
+		"en-US":                "en",
+		"":                     "en",
+	}
+	for input, want := range cases {
+		require.Equal(t, want, normalizeAdminComplianceLanguage(input), input)
+	}
+}
+
+func TestAcceptAdminComplianceAcceptsTraditionalPhrase(t *testing.T) {
+	repo := &adminComplianceRepoStub{}
+	svc := NewSettingService(repo, &config.Config{})
+
+	status, err := svc.AcceptAdminCompliance(context.Background(), AdminComplianceAcceptInput{
+		AdminUserID: 7,
+		Language:    "zh-TW",
+		Phrase:      AdminComplianceAckPhraseZHTW,
+	})
+	require.NoError(t, err)
+	require.False(t, status.Required)
+
+	var stored AdminComplianceAcknowledgement
+	require.NoError(t, json.Unmarshal([]byte(repo.values[adminComplianceAcknowledgementKey(7)]), &stored))
+	require.Equal(t, "zh-TW", stored.Language)
+	require.Equal(t, AdminComplianceDocumentPathZHTW, stored.DocumentZHTW)
+}
+
+func TestAcceptAdminComplianceRejectsCrossLocalePhrase(t *testing.T) {
+	svc := NewSettingService(&adminComplianceRepoStub{}, &config.Config{})
+
+	for _, input := range []AdminComplianceAcceptInput{
+		{AdminUserID: 1, Language: "zh", Phrase: AdminComplianceAckPhraseZHTW},
+		{AdminUserID: 1, Language: "zh-TW", Phrase: AdminComplianceAckPhraseZH},
+	} {
+		_, err := svc.AcceptAdminCompliance(context.Background(), input)
+		require.Error(t, err)
+		require.True(t, errors.Is(err, ErrAdminComplianceInvalidPhrase))
+	}
 }
 
 func TestAcceptAdminComplianceRejectsWrongPhrase(t *testing.T) {
@@ -98,6 +154,8 @@ func TestAcceptAdminCompliancePersistsCurrentVersion(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(repo.values[adminComplianceAcknowledgementKey(42)]), &stored))
 	require.Equal(t, AdminComplianceVersion, stored.Version)
 	require.Equal(t, AdminComplianceDocumentPathZH, stored.DocumentZH)
+	require.Equal(t, AdminComplianceDocumentPathZHTW, stored.DocumentZHTW)
+	require.Equal(t, "zh", stored.Language)
 }
 
 func TestAdminComplianceStatusRequiresAckOnOldVersion(t *testing.T) {

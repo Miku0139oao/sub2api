@@ -2,6 +2,7 @@
 export default {
   channelMonitorV2: {
     title: '渠道监控',
+    axisFallback: '时间脉冲',
     updating: '正在更新数据',
     updatedTo: '更新至 {time}',
     partialCoverage: '部分历史覆盖',

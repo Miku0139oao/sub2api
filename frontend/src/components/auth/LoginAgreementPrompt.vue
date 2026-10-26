@@ -196,7 +196,8 @@ function documentIcon(index: number, title: string): 'document' | 'shield' | 'gl
     normalizedTitle.includes('policy') ||
     normalizedTitle.includes('privacy') ||
     title.includes('政策') ||
-    title.includes('隐私')
+    title.includes('隐私') ||
+    title.includes('隱私')
   ) {
     return 'shield'
   }
@@ -204,7 +205,9 @@ function documentIcon(index: number, title: string): 'document' | 'shield' | 'gl
     normalizedTitle.includes('country') ||
     normalizedTitle.includes('region') ||
     title.includes('国家') ||
-    title.includes('地区')
+    title.includes('地区') ||
+    title.includes('國家') ||
+    title.includes('地區')
   ) {
     return 'globe'
   }

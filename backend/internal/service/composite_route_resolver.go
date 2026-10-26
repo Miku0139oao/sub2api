@@ -95,6 +95,33 @@ func filterSystemOneRouteModels(routes []CompositeModelRoute, models []string, e
 }
 
 func (r *CompositeRouteResolver) Resolve(ctx context.Context, groupID int64, model, endpoint string) (CompositeRouteDecision, error) {
+	decision, routes, err := r.resolveWithRoutes(ctx, groupID, model, endpoint)
+	if err != nil || !decision.Matched || decision.Route == nil || len(routes) == 0 {
+		return decision, err
+	}
+	decision.Candidates = compositeRouteCandidates(routes, model, endpoint, *decision.Route)
+	if len(decision.Candidates) > 1 {
+		// 跨平台负载均衡：把本会话按 weight 抽中的平台提到链首。没有 weight
+		// 或没有 session hash 时原样返回，行为与以往完全一致。
+		if sessionHash, ok := CompositeLBSessionHashFromContext(ctx); ok {
+			decision.Candidates = orderCompositeCandidatesForLoadBalancing(decision.Candidates, sessionHash, model)
+			leading := decision.Candidates[0]
+			if leading.TargetPlatform != decision.TargetPlatform {
+				// 分流把另一个平台选为首选：同步 decision 的首选字段，让调用方
+				// 看到的首选平台与候选链一致。
+				decision.TargetPlatform = leading.TargetPlatform
+				decision.UpstreamModel = leading.UpstreamModel
+				decision.LoadBalanced = true
+			}
+		}
+	}
+	return decision, nil
+}
+
+// resolveWithRoutes runs the resolution ladder (explicit route, then account
+// ownership, then the built-in detector) and hands back the raw route list so
+// callers can derive the remaining failover chain without a second query.
+func (r *CompositeRouteResolver) resolveWithRoutes(ctx context.Context, groupID int64, model, endpoint string) (CompositeRouteDecision, []CompositeModelRoute, error) {
 	model = strings.TrimSpace(model)
 	endpoint = normalizeCompositeRouteEndpoint(endpoint)
 	decision := CompositeRouteDecision{
@@ -104,19 +131,16 @@ func (r *CompositeRouteResolver) Resolve(ctx context.Context, groupID int64, mod
 	}
 	if model == "" {
 		decision.Reason = "model is required"
-		return decision, nil
+		return decision, nil, nil
 	}
 
 	if r != nil && r.repo != nil && groupID > 0 {
 		routes, err := r.repo.ListByGroup(ctx, groupID, false)
 		if err != nil {
-			return decision, fmt.Errorf("list composite routes: %w", err)
+			return decision, nil, fmt.Errorf("list composite routes: %w", err)
 		}
 		if route, ok := matchCompositeRoute(routes, model, endpoint); ok {
-			upstreamModel := strings.TrimSpace(route.UpstreamModel)
-			if upstreamModel == "" {
-				upstreamModel = model
-			}
+			upstreamModel := compositeRouteUpstreamModel(route, model)
 			return CompositeRouteDecision{
 				Matched:        true,
 				Source:         CompositeRouteSourceExplicit,
@@ -126,7 +150,7 @@ func (r *CompositeRouteResolver) Resolve(ctx context.Context, groupID int64, mod
 				UpstreamModel:  upstreamModel,
 				Endpoint:       endpoint,
 				Route:          &route,
-			}, nil
+			}, routes, nil
 		}
 	}
 
@@ -136,7 +160,7 @@ func (r *CompositeRouteResolver) Resolve(ctx context.Context, groupID int64, mod
 			// A recognizable model can still use the existing detector when the
 			// account catalog is temporarily unavailable. Unknown aliases cannot.
 			if _, detectable := DetectModelPlatform(model); !detectable {
-				return decision, fmt.Errorf("resolve account model ownership: %w", err)
+				return decision, nil, fmt.Errorf("resolve account model ownership: %w", err)
 			}
 		} else if ownership.Ambiguous {
 			decision.Reason = CompositeRouteReasonAmbiguous
@@ -145,12 +169,12 @@ func (r *CompositeRouteResolver) Resolve(ctx context.Context, groupID int64, mod
 			if guessed, ok := DetectModelPlatform(model); ok && ownership.OpenAIGatewayOAuthClaimed && domain.UsesOpenAIGateway(guessed) {
 				decision.Reason = CompositeRouteReasonOAuthAmbiguous
 			}
-			return decision, nil
+			return decision, nil, nil
 		} else if ownership.Matched {
 			platform := strings.TrimSpace(ownership.TargetPlatform)
 			if !isConcreteRequestPlatform(platform) {
 				decision.Reason = "account model ownership has no concrete target platform"
-				return decision, nil
+				return decision, nil, nil
 			}
 			return CompositeRouteDecision{
 				Matched:        true,
@@ -160,7 +184,7 @@ func (r *CompositeRouteResolver) Resolve(ctx context.Context, groupID int64, mod
 				TargetPlatform: platform,
 				UpstreamModel:  model,
 				Endpoint:       endpoint,
-			}, nil
+			}, nil, nil
 		}
 	}
 
@@ -173,10 +197,131 @@ func (r *CompositeRouteResolver) Resolve(ctx context.Context, groupID int64, mod
 			TargetPlatform: platform,
 			UpstreamModel:  model,
 			Endpoint:       endpoint,
-		}, nil
+		}, nil, nil
 	}
 	decision.Reason = "no explicit route or built-in detector match"
-	return decision, nil
+	return decision, nil, nil
+}
+
+// compositeRouteUpstreamModel returns the model identifier forwarded upstream
+// for a route: the configured upstream model, else the requested model.
+func compositeRouteUpstreamModel(route CompositeModelRoute, requestedModel string) string {
+	if upstreamModel := strings.TrimSpace(route.UpstreamModel); upstreamModel != "" {
+		return upstreamModel
+	}
+	return requestedModel
+}
+
+// compositeRouteCandidates builds the ordered cross-platform failover chain
+// rooted at the already-selected route.
+//
+// Only routes sharing the winner's public_model, match_type and effective
+// endpoint are eligible — an `exact` route and a `prefix` route for the same
+// alias describe different request shapes and must never be chained. Routes
+// are ordered by the same comparator that picked the winner (endpoint
+// specificity, then priority, then id), and only the highest-priority route per
+// target platform survives, so a platform is never attempted twice in one
+// request. The chain is returned only when it has more than one member.
+func compositeRouteCandidates(routes []CompositeModelRoute, model, endpoint string, winner CompositeModelRoute) []CompositeRouteCandidate {
+	if len(routes) == 0 {
+		return nil
+	}
+	publicModel := strings.TrimSpace(winner.PublicModel)
+	matchType := normalizeCompositeRouteMatchType(winner.MatchType)
+	if publicModel == "" {
+		return nil
+	}
+
+	type candidate struct {
+		route          CompositeModelRoute
+		endpointWeight int
+	}
+	chain := make([]candidate, 0, len(routes))
+	for _, route := range routes {
+		if strings.TrimSpace(route.PublicModel) != publicModel {
+			continue
+		}
+		if normalizeCompositeRouteMatchType(route.MatchType) != matchType {
+			continue
+		}
+		routeEndpoint := normalizeCompositeRouteEndpoint(route.Endpoint)
+		if routeEndpoint != endpoint && routeEndpoint != CompositeRouteEndpointAny {
+			continue
+		}
+		if !isConcreteRequestPlatform(strings.TrimSpace(route.TargetPlatform)) {
+			continue
+		}
+		route.Endpoint = routeEndpoint
+		route.MatchType = matchType
+		chain = append(chain, candidate{
+			route:          route,
+			endpointWeight: boolToInt(routeEndpoint == endpoint),
+		})
+	}
+	if len(chain) < 2 {
+		return nil
+	}
+
+	sort.SliceStable(chain, func(i, j int) bool {
+		a, b := chain[i], chain[j]
+		if a.endpointWeight != b.endpointWeight {
+			return a.endpointWeight > b.endpointWeight
+		}
+		if a.route.Priority != b.route.Priority {
+			return a.route.Priority < b.route.Priority
+		}
+		return a.route.ID < b.route.ID
+	})
+
+	// The winner must lead the chain even if another route orders ahead of it
+	// (for example an `any`-endpoint route with a lower priority that lost to
+	// an endpoint-specific one). Candidates[0] therefore always matches the
+	// platform this decision already selected.
+	winnerID := winner.ID
+	ordered := make([]candidate, 0, len(chain))
+	for _, item := range chain {
+		if item.route.ID == winnerID {
+			ordered = append(ordered, item)
+		}
+	}
+	for _, item := range chain {
+		if item.route.ID != winnerID {
+			ordered = append(ordered, item)
+		}
+	}
+
+	seen := make(map[string]struct{}, len(ordered))
+	candidates := make([]CompositeRouteCandidate, 0, len(ordered))
+	for _, item := range ordered {
+		platform := strings.TrimSpace(item.route.TargetPlatform)
+		// The chain is platform-scoped: a second route to the same platform
+		// cannot reach a different account pool, and account-level failover
+		// already walks every account of that platform. Keeping the highest
+		// priority row per platform avoids a duplicate, no-op attempt.
+		if _, ok := seen[platform]; ok {
+			continue
+		}
+		seen[platform] = struct{}{}
+		candidates = append(candidates, CompositeRouteCandidate{
+			TargetPlatform: platform,
+			UpstreamModel:  compositeRouteUpstreamModel(item.route, model),
+			Priority:       item.route.Priority,
+			RouteID:        item.route.ID,
+			Endpoint:       item.route.Endpoint,
+			Weight:         item.route.Weight,
+		})
+	}
+	if len(candidates) < 2 {
+		return nil
+	}
+	return candidates
+}
+
+func boolToInt(value bool) int {
+	if value {
+		return 1
+	}
+	return 0
 }
 
 func matchCompositeRoute(routes []CompositeModelRoute, model, endpoint string) (CompositeModelRoute, bool) {

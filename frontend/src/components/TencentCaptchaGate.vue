@@ -17,6 +17,7 @@ import { useI18n } from 'vue-i18n'
 import {
   loadTencentCaptcha,
   normalizeTencentCaptchaRegion,
+  tencentCaptchaLanguage,
   type TencentCaptchaProof,
   type TencentCaptchaResult
 } from '@/utils/tencentCaptcha'
@@ -67,7 +68,7 @@ function createVerificationPromise(revealInternational: boolean = true): Promise
       .then((TencentCaptcha) => {
         if (cancelPending !== cancel) return
 
-        const userLanguage = locale.value.toLowerCase().startsWith('zh') ? 'zh-cn' : 'en'
+        const userLanguage = tencentCaptchaLanguage(locale.value)
         const handleResult = (result: TencentCaptchaResult): void => {
           if (result.ret === 2) {
             finish(() => resolve(null))

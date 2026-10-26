@@ -1,10 +1,21 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import adminComplianceAPI, { type AdminComplianceStatus } from '@/api/admin/compliance'
+import {
+  ADMIN_COMPLIANCE_PHRASE_FALLBACK_EN,
+  ADMIN_COMPLIANCE_PHRASE_FALLBACK_ZH,
+  ADMIN_COMPLIANCE_PHRASE_FALLBACK_ZHTW,
+  ADMIN_COMPLIANCE_VERSION_FALLBACK,
+} from '@/constants/adminCompliance'
 import { getLocale } from '@/i18n'
+import { isTraditionalChineseLocale } from '@/i18n/locale'
 
-const FALLBACK_ZH_PHRASE = '我已阅读、理解并同意 Sub2API 部署与运营合规承诺'
-const FALLBACK_EN_PHRASE = 'I have read, understood, and agree to the Sub2API Deployment and Operation Compliance Commitment'
+const FALLBACK_DOCUMENT_PATH_ZH = 'docs/legal/admin-compliance.zh.md'
+const FALLBACK_DOCUMENT_PATH_ZHTW = 'docs/legal/admin-compliance.zh-TW.md'
+const FALLBACK_DOCUMENT_PATH_EN = 'docs/legal/admin-compliance.en.md'
+const FALLBACK_DOCUMENT_URL_ZH = 'https://github.com/Wei-Shaw/sub2api/blob/main/docs/legal/admin-compliance.zh.md'
+const FALLBACK_DOCUMENT_URL_ZHTW = 'https://github.com/Wei-Shaw/sub2api/blob/main/docs/legal/admin-compliance.zh-TW.md'
+const FALLBACK_DOCUMENT_URL_EN = 'https://github.com/Wei-Shaw/sub2api/blob/main/docs/legal/admin-compliance.en.md'
 
 export const useAdminComplianceStore = defineStore('adminCompliance', () => {
   const status = ref<AdminComplianceStatus | null>(null)
@@ -18,10 +29,13 @@ export const useAdminComplianceStore = defineStore('adminCompliance', () => {
   const shouldShow = computed(() => required.value || forceVisible.value)
   const currentLocale = computed(() => getLocale())
   const expectedPhrase = computed(() => {
-    if (currentLocale.value === 'zh') {
-      return status.value?.ack_phrase_zh || FALLBACK_ZH_PHRASE
+    if (isTraditionalChineseLocale(currentLocale.value)) {
+      return status.value?.ack_phrase_zh_tw || ADMIN_COMPLIANCE_PHRASE_FALLBACK_ZHTW
     }
-    return status.value?.ack_phrase_en || FALLBACK_EN_PHRASE
+    if (currentLocale.value === 'zh') {
+      return status.value?.ack_phrase_zh || ADMIN_COMPLIANCE_PHRASE_FALLBACK_ZH
+    }
+    return status.value?.ack_phrase_en || ADMIN_COMPLIANCE_PHRASE_FALLBACK_EN
   })
 
   async function fetchStatus(): Promise<AdminComplianceStatus> {
@@ -45,7 +59,7 @@ export const useAdminComplianceStore = defineStore('adminCompliance', () => {
     try {
       const nextStatus = await adminComplianceAPI.accept({
         phrase,
-        language: currentLocale.value
+        language: currentLocale.value,
       })
       if (version !== stateVersion) return nextStatus
       status.value = nextStatus
@@ -59,14 +73,26 @@ export const useAdminComplianceStore = defineStore('adminCompliance', () => {
   function requireAcknowledgement(partialStatus?: Partial<AdminComplianceStatus>): void {
     status.value = {
       required: true,
-      version: partialStatus?.version || status.value?.version || 'v2026.06.10',
-      document_path_zh: partialStatus?.document_path_zh || status.value?.document_path_zh || 'docs/legal/admin-compliance.zh.md',
-      document_path_en: partialStatus?.document_path_en || status.value?.document_path_en || 'docs/legal/admin-compliance.en.md',
-      document_url_zh: partialStatus?.document_url_zh || status.value?.document_url_zh || 'https://github.com/Wei-Shaw/sub2api/blob/main/docs/legal/admin-compliance.zh.md',
-      document_url_en: partialStatus?.document_url_en || status.value?.document_url_en || 'https://github.com/Wei-Shaw/sub2api/blob/main/docs/legal/admin-compliance.en.md',
-      ack_phrase_zh: partialStatus?.ack_phrase_zh || status.value?.ack_phrase_zh || FALLBACK_ZH_PHRASE,
-      ack_phrase_en: partialStatus?.ack_phrase_en || status.value?.ack_phrase_en || FALLBACK_EN_PHRASE,
-      acknowledgement: status.value?.acknowledgement
+      version: partialStatus?.version || status.value?.version || ADMIN_COMPLIANCE_VERSION_FALLBACK,
+      document_path_zh:
+        partialStatus?.document_path_zh || status.value?.document_path_zh || FALLBACK_DOCUMENT_PATH_ZH,
+      document_path_zh_tw:
+        partialStatus?.document_path_zh_tw || status.value?.document_path_zh_tw || FALLBACK_DOCUMENT_PATH_ZHTW,
+      document_path_en:
+        partialStatus?.document_path_en || status.value?.document_path_en || FALLBACK_DOCUMENT_PATH_EN,
+      document_url_zh:
+        partialStatus?.document_url_zh || status.value?.document_url_zh || FALLBACK_DOCUMENT_URL_ZH,
+      document_url_zh_tw:
+        partialStatus?.document_url_zh_tw || status.value?.document_url_zh_tw || FALLBACK_DOCUMENT_URL_ZHTW,
+      document_url_en:
+        partialStatus?.document_url_en || status.value?.document_url_en || FALLBACK_DOCUMENT_URL_EN,
+      ack_phrase_zh:
+        partialStatus?.ack_phrase_zh || status.value?.ack_phrase_zh || ADMIN_COMPLIANCE_PHRASE_FALLBACK_ZH,
+      ack_phrase_zh_tw:
+        partialStatus?.ack_phrase_zh_tw || status.value?.ack_phrase_zh_tw || ADMIN_COMPLIANCE_PHRASE_FALLBACK_ZHTW,
+      ack_phrase_en:
+        partialStatus?.ack_phrase_en || status.value?.ack_phrase_en || ADMIN_COMPLIANCE_PHRASE_FALLBACK_EN,
+      acknowledgement: status.value?.acknowledgement,
     }
     initialized.value = true
     forceVisible.value = true
@@ -92,6 +118,6 @@ export const useAdminComplianceStore = defineStore('adminCompliance', () => {
     fetchStatus,
     accept,
     requireAcknowledgement,
-    reset
+    reset,
   }
 })

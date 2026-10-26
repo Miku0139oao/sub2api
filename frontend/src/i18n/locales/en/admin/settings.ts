@@ -1,5 +1,70 @@
 export default {
     settings: {
+      inline: {
+        addDocument: "Add document",
+        afterGithubGoogleEmailOauthEnabledSystem: "After GitHub or Google email OAuth is enabled, the system reads a verified email, signs in matching users, and auto-registers missing users.",
+        agreementDocuments: "Agreement documents",
+        appliedFirstSignupFirstBindThroughDingtalk: "Applied on first signup or first bind through DingTalk.",
+        appliedFirstSignupFirstBindThroughVerified: "Applied on first signup or first bind through a verified GitHub email.",
+        appliedFirstSignupFirstBindThroughVerified2: "Applied on first signup or first bind through a verified Google email.",
+        backendCallbackUrl: "Backend Callback URL",
+        browserRedirectUrl: "Browser Redirect URL",
+        callbackUrlSetCopied: "Callback URL set and copied.",
+        changingDateContentRequiresFreshConsent: "Changing the date or content requires fresh consent.",
+        checkbox: "Checkbox",
+        checkboxAppearsBelowLoginButtonGatesAll: "The checkbox appears below the login button and gates all login actions.",
+        controlWhetherLoginPageRequiresUsersAccept: "Control whether the login page requires users to accept Markdown policy documents first.",
+        desktopBrowsersSignThroughWechatOpenPlatform: "Desktop browsers sign in through WeChat Open Platform QR login. This can coexist with Official Account or Mobile App.",
+        dingtalkCorporateEmail: "DingTalk Corporate Email",
+        dingtalkDepartment: "DingTalk Department",
+        dingtalkName: "DingTalk Name",
+        disabled: "Disabled",
+        displayMode: "Display mode",
+        documentTitle: "Document title",
+        documentTitlesCustomizableContentSavedMarkdown: "Document titles are customizable and content is saved as Markdown.",
+        emailOauthSign: "Email OAuth Sign-in",
+        enabled: "Enabled",
+        exampleTermsService: "Example: Terms of Service",
+        frontendCallbackUrl: "Frontend Callback URL",
+        generateCopy: "Generate and copy",
+        githubOauthAppNeedsReadUserUser: "GitHub OAuth App needs read:user user:email scopes. Use the backend callback URL below.",
+        githubOAuthGuidePrefix: "Setup guide: GitHub Settings → Developer settings →",
+        githubOAuthGuideSuffix: "→ New OAuth App. Use your site origin as Homepage URL and the backend callback URL below as Authorization callback URL.",
+        googleOauthClientNeedsOpenidEmailProfile: "Google OAuth client needs openid email profile scopes and the backend callback URL registered in credentials.",
+        leastOneDocumentRequiredLoginAgreementEnabled: "At least one document is required when login agreement is enabled.",
+        loginAgreement: "Login agreement",
+        loginAgreementDocumentTitleCannotEmpty: "Login agreement document title cannot be empty.",
+        loginAgreementDuplicateRoute: "Login agreement document routes cannot be duplicated: /legal/{id}",
+        markdownContent: "Markdown content",
+        mobileApp: "Mobile App",
+        mobileAppId: "Mobile App ID",
+        mobileAppSecret: "Mobile App Secret",
+        modal: "Modal",
+        modalOpensLoginPageGatesAllLogin: "The modal opens on the login page and gates all login actions until accepted.",
+        nativeMobileClientsStartAuthorizationThroughWechat: "Native mobile clients start authorization through the WeChat SDK. The web UI does not launch this flow directly.",
+        officialAccount: "Official Account",
+        officialAccountAppId: "Official Account App ID",
+        officialAccountAppSecret: "Official Account App Secret",
+        officialAccountMobileAppCannotEnabledSame: "Official Account and Mobile App cannot be enabled at the same time.",
+        onlyAvailableInsideWechatBrowserShownUnavailable: "Only available inside the WeChat browser. It is shown as unavailable outside WeChat.",
+        pcApp: "PC App",
+        pcAppEnabledTogetherOfficialAccountMobile: "When PC App is enabled together with Official Account or Mobile App, they should belong to the same WeChat Open Platform account so UnionID can merge identities reliably.",
+        pcAppId: "PC App ID",
+        pcAppSecret: "PC App Secret",
+        routeSlug: "Route slug",
+        secretConfiguredLeaveEmptyKeepCurrentValue: "Secret configured. Leave empty to keep the current value.",
+        serviceSpecificTerms: "Service-Specific Terms",
+        setupGuideGoogleCloudConsoleApisServices: "Setup guide: Google Cloud Console → APIs & Services → OAuth consent screen, then Credentials → Create Credentials → OAuth client ID, choose Web application, and add the URL below to Authorized redirect URIs.",
+        supportedCountriesRegions: "Supported Countries and Regions",
+        termsService: "Terms of Service",
+        untitledDocument: "Untitled document",
+        updatedDate: "Updated date",
+        usagePolicy: "Usage Policy",
+        usedPcAppOfficialAccountBrowserCallbacks: "Used by PC App and Official Account browser callbacks. Native mobile SDK flows do not start from this browser callback directly.",
+        wechatOpenPlatformPcAppId: "WeChat Open Platform PC App ID",
+        wechatOpenPlatformPcAppSecret: "WeChat Open Platform PC App Secret",
+        writeFinalMarkdownContentHere: "Write the final Markdown content here.",
+      },
       title: 'System Settings',
       description: 'Manage registration, email verification, default values, and SMTP settings',
       tabs: {
@@ -988,6 +1053,67 @@ export default {
         enterRecipientHint: 'Please enter a recipient email address'
       },
       emailTemplates: {
+        optional: "Optional",
+        transactional: "Transactional",
+        categories: {
+          auth: "Auth",
+          subscription: "Subscription",
+          billing: "Billing",
+          admin: "Admin",
+          riskControl: "Risk Control",
+          ops: "Ops",
+          notification: "Notification",
+        },
+        events: {
+          authVerifyCode: {
+            label: "Email Verification Code",
+            timing: "Sent for registration, email binding, OAuth pending email completion, or TOTP email verification."
+          },
+          authPasswordReset: {
+            label: "Password Reset",
+            timing: "Sent when a user requests a password reset link."
+          },
+          notificationEmailVerifyCode: {
+            label: "Notification Email Verification",
+            timing: "Sent when a user adds and verifies an extra notification email address."
+          },
+          subscriptionPurchaseSuccess: {
+            label: "Subscription Activated",
+            timing: "Sent after a subscription order is paid and the subscription is activated or extended."
+          },
+          subscriptionExpiryReminder: {
+            label: "Subscription Expiry Reminder",
+            timing: "Sent by the background job when an active subscription has 7, 3, or 1 day remaining. It can be disabled in Email settings."
+          },
+          balanceLow: {
+            label: "Low Balance Alert",
+            timing: "Sent when a user's balance drops below the global or personal reminder threshold."
+          },
+          balanceRechargeSuccess: {
+            label: "Balance Recharge Success",
+            timing: "Sent after a balance recharge order is paid and credited."
+          },
+          accountQuotaAlert: {
+            label: "Account Quota Alert",
+            timing: "Sent to admin notification emails when an upstream account reaches the configured quota alert threshold."
+          },
+          contentModerationViolationNotice: {
+            label: "Risk Control Violation Notice",
+            timing: "Sent when a user request triggers content moderation or risk-control rules but the account is not disabled yet."
+          },
+          contentModerationAccountDisabled: {
+            label: "Risk Control Account Disabled",
+            timing: "Sent when content moderation reaches the ban threshold and automatically disables the user account."
+          },
+          opsAlert: {
+            label: "Ops Alert",
+            timing: "Sent to ops recipients when an ops monitoring rule fires and email notification settings allow it."
+          },
+          opsScheduledReport: {
+            label: "Ops Scheduled Report",
+            timing: "Sent when a configured daily, weekly, error digest, or account health report reaches its scheduled send time. Every daily and weekly summary metric is editable in this template."
+          },
+        },
         title: 'Email Templates',
         description: 'Customize notification email subjects and HTML content for each event and locale.',
         event: 'Event',

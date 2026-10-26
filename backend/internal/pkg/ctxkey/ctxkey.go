@@ -20,6 +20,21 @@ const (
 	// CompositeRouteSource 标识 composite 解析结果来自显式路由还是内置模型探测。
 	CompositeRouteSource Key = "ctx_composite_route_source"
 
+	// CompositeRouteCandidates 是 composite 分组同一公开模型按优先级排序的跨平台
+	// 候选链（含首选）。仅在显式路由命中且存在多个不同目标平台时存在。
+	CompositeRouteCandidates Key = "ctx_composite_route_candidates"
+
+	// CompositeAttemptedPlatforms 记录本请求已经尝试过的目标平台，按尝试顺序去重，
+	// 供跨平台 failover 选择下一个尚未尝试的候选。
+	CompositeAttemptedPlatforms Key = "ctx_composite_attempted_platforms"
+
+	// CompositeAttemptBody 是跨平台 failover 后为当前候选平台重新推导的请求体。
+	CompositeAttemptBody Key = "ctx_composite_attempt_body"
+
+	// CompositeAttemptOriginalBody 是客户端原始请求体，供跨平台 failover
+	// 重新推导上游 model 时使用（避免在已改写的 body 上叠加改写）。
+	CompositeAttemptOriginalBody Key = "ctx_composite_attempt_original_body"
+
 	// RequestID 为服务端生成/透传的请求 ID。
 	RequestID Key = "ctx_request_id"
 

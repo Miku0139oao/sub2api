@@ -1,5 +1,70 @@
 export default {
     settings: {
+      inline: {
+        addDocument: "添加文档",
+        afterGithubGoogleEmailOauthEnabledSystem: "开启 GitHub 或 Google 邮箱授权登录后，系统会读取已验证邮箱，存在则直接登录，不存在则自动注册。",
+        agreementDocuments: "协议文档",
+        appliedFirstSignupFirstBindThroughDingtalk: "通过钉钉首次注册或首次绑定时应用。",
+        appliedFirstSignupFirstBindThroughVerified: "通过 GitHub 已验证邮箱首次注册或首次绑定时应用。",
+        appliedFirstSignupFirstBindThroughVerified2: "通过 Google 已验证邮箱首次注册或首次绑定时应用。",
+        backendCallbackUrl: "后端回调地址",
+        browserRedirectUrl: "浏览器回调地址",
+        callbackUrlSetCopied: "回调地址已写入并复制。",
+        changingDateContentRequiresFreshConsent: "日期或文档内容变化后，用户需要重新同意。",
+        checkbox: "复选框",
+        checkboxAppearsBelowLoginButtonGatesAll: "复选框会显示在登录按钮下方，未勾选前所有登录入口禁用。",
+        controlWhetherLoginPageRequiresUsersAccept: "控制登录页是否要求用户先阅读并同意服务条款、隐私政策或其他 Markdown 文档。",
+        desktopBrowsersSignThroughWechatOpenPlatform: "桌面浏览器通过微信开放平台扫码登录。可与公众号或移动应用同时存在。",
+        dingtalkCorporateEmail: "钉钉企业邮箱",
+        dingtalkDepartment: "钉钉部门",
+        dingtalkName: "钉钉姓名",
+        disabled: "未启用",
+        displayMode: "展示形式",
+        documentTitle: "文档名称",
+        documentTitlesCustomizableContentSavedMarkdown: "文档名称可自定义，内容按 Markdown 保存。可参考：服务条款、使用政策、支持的国家和地区、服务特定条款。",
+        emailOauthSign: "邮箱快捷登录",
+        enabled: "已启用",
+        exampleTermsService: "例如：服务条款",
+        frontendCallbackUrl: "前端回跳地址",
+        generateCopy: "生成并复制",
+        githubOauthAppNeedsReadUserUser: "GitHub OAuth App 需要 read:user user:email 权限，回调地址填写下方后端地址。",
+        githubOAuthGuidePrefix: "开通引导：GitHub Settings → Developer settings →",
+        githubOAuthGuideSuffix: "→ New OAuth App；Homepage URL 填站点域名，Authorization callback URL 填下面的后端回调地址。",
+        googleOauthClientNeedsOpenidEmailProfile: "Google OAuth 客户端需要 openid email profile 范围，并在凭据里登记后端回调地址。",
+        leastOneDocumentRequiredLoginAgreementEnabled: "启用登录条款确认时，至少需要保留一份文档。",
+        loginAgreement: "登录条款确认",
+        loginAgreementDocumentTitleCannotEmpty: "登录条款文档名称不能为空。",
+        loginAgreementDuplicateRoute: "登录条款文档路由不能重复：/legal/{id}",
+        markdownContent: "Markdown 内容",
+        mobileApp: "移动应用",
+        mobileAppId: "移动应用 AppID",
+        mobileAppSecret: "移动应用 AppSecret",
+        modal: "弹窗",
+        modalOpensLoginPageGatesAllLogin: "弹窗会在登录页打开，用户拒绝后所有登录入口保持禁用。",
+        nativeMobileClientsStartAuthorizationThroughWechat: "原生移动端通过微信 SDK 唤起授权，网页端不会直接发起该流程。",
+        officialAccount: "公众号",
+        officialAccountAppId: "公众号 AppID",
+        officialAccountAppSecret: "公众号 AppSecret",
+        officialAccountMobileAppCannotEnabledSame: "公众号和移动应用不能同时启用。",
+        onlyAvailableInsideWechatBrowserShownUnavailable: "仅在微信内浏览器可用；非微信环境下会显示不可用。",
+        pcApp: "PC 应用",
+        pcAppEnabledTogetherOfficialAccountMobile: "如果同时启用 PC 应用和公众号/移动应用，这些应用需要挂在同一个微信开放平台主体下，否则 UnionID 无法稳定归并账号。",
+        pcAppId: "PC AppID",
+        pcAppSecret: "PC AppSecret",
+        routeSlug: "路由标识",
+        secretConfiguredLeaveEmptyKeepCurrentValue: "密钥已配置，留空以保留当前值。",
+        serviceSpecificTerms: "服务特定条款",
+        setupGuideGoogleCloudConsoleApisServices: "开通引导：Google Cloud Console → APIs & Services → OAuth consent screen 完成同意屏幕；Credentials → Create Credentials → OAuth client ID，类型选择 Web application，并把下面地址加入 Authorized redirect URIs。",
+        supportedCountriesRegions: "支持的国家和地区",
+        termsService: "服务条款",
+        untitledDocument: "未命名文档",
+        updatedDate: "条款更新日期",
+        usagePolicy: "使用政策",
+        usedPcAppOfficialAccountBrowserCallbacks: "用于 PC 应用和公众号的网页回调。移动应用走原生 SDK 时不直接使用这个浏览器回调。",
+        wechatOpenPlatformPcAppId: "微信开放平台 PC 应用 AppID",
+        wechatOpenPlatformPcAppSecret: "微信开放平台 PC 应用 AppSecret",
+        writeFinalMarkdownContentHere: "在这里填写正式 Markdown 内容。",
+      },
       title: '系统设置',
       description: '管理注册、邮箱验证、默认值和 SMTP 设置',
       tabs: {
@@ -983,6 +1048,67 @@ export default {
         enterRecipientHint: '请输入收件人邮箱地址'
       },
       emailTemplates: {
+        optional: "可退订通知",
+        transactional: "事务邮件",
+        categories: {
+          auth: "认证安全",
+          subscription: "订阅",
+          billing: "计费",
+          admin: "管理告警",
+          riskControl: "风控",
+          ops: "运维",
+          notification: "通知",
+        },
+        events: {
+          authVerifyCode: {
+            label: "邮箱验证码",
+            timing: "注册、绑定邮箱、OAuth 补全邮箱或 TOTP 邮箱校验时发送。"
+          },
+          authPasswordReset: {
+            label: "密码重置",
+            timing: "用户请求密码重置链接时发送。"
+          },
+          notificationEmailVerifyCode: {
+            label: "通知邮箱验证码",
+            timing: "用户添加并验证额外通知邮箱时发送。"
+          },
+          subscriptionPurchaseSuccess: {
+            label: "订阅开通成功",
+            timing: "订阅订单完成支付并成功开通或续期后发送。"
+          },
+          subscriptionExpiryReminder: {
+            label: "订阅到期提醒",
+            timing: "后台任务在订阅仍有效且距离到期剩余 7 天、3 天、1 天时各发送一次，可通过邮件设置中的开关关闭。"
+          },
+          balanceLow: {
+            label: "余额不足提醒",
+            timing: "用户余额低于全局或个人配置的提醒阈值时发送。"
+          },
+          balanceRechargeSuccess: {
+            label: "余额充值成功",
+            timing: "余额充值订单支付完成并入账后发送。"
+          },
+          accountQuotaAlert: {
+            label: "账号限额告警",
+            timing: "上游账号的用量达到配置的额度告警阈值时发送给管理员通知邮箱。"
+          },
+          contentModerationViolationNotice: {
+            label: "内容审计违规提醒",
+            timing: "用户请求命中内容审计或风控规则、但尚未被禁用时发送。"
+          },
+          contentModerationAccountDisabled: {
+            label: "内容审计禁用账号",
+            timing: "内容审计违规次数达到封禁阈值并自动禁用用户账号时发送。"
+          },
+          opsAlert: {
+            label: "运维告警",
+            timing: "运维监控规则触发告警并满足邮件通知配置时发送给运维收件人。"
+          },
+          opsScheduledReport: {
+            label: "运维定时报表",
+            timing: "运维日报、周报、错误摘要或账号健康报表到达配置的发送时间时发送；日报和周报的完整指标均可在模板中编辑。"
+          },
+        },
         title: '邮件模板',
         description: '按事件和语言自定义通知邮件主题与 HTML 内容。',
         event: '事件',

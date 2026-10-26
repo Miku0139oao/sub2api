@@ -27,6 +27,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { isChineseLocale } from '@/i18n/locale'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
@@ -94,7 +95,7 @@ function restoreAirwallexSnapshot(): PaymentRecoverySnapshot | null {
 
 onMounted(async () => {
   const snapshot = restoreAirwallexSnapshot()
-  const checkoutLocale = locale.value.toLowerCase().startsWith('zh') ? 'zh' : 'en'
+  const checkoutLocale = isChineseLocale(locale.value) ? 'zh' : 'en'
 
   if (!snapshot) {
     loading.value = false

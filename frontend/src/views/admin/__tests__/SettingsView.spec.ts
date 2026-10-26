@@ -249,6 +249,7 @@ vi.mock("vue-i18n", async () => {
     "admin.settings.defaults.platformQuotaNotice": "月限额为 30 天滚动窗口，非自然月",
     "admin.settings.authSourceDefaults.platformQuotasOverride": "平台限额覆盖",
     "admin.settings.authSourceDefaults.platformQuotasOverrideHint": "留空的字段继承「系统默认平台限额」；填 0 表示禁止该窗口使用。",
+    "admin.settings.inline.secretConfiguredLeaveEmptyKeepCurrentValue": "密钥已配置，留空以保留当前值。",
   };
   return {
     ...actual,

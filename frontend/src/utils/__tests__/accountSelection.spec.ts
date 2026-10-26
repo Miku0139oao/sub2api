@@ -49,7 +49,7 @@ describe('fetchAllAccountIds', () => {
       pages: 1
     })
 
-    await expect(fetchAllAccountIds(fetchPage, {})).rejects.toThrow('账号列表结果不完整')
+    await expect(fetchAllAccountIds(fetchPage, {})).rejects.toThrow('errors.accountListIncomplete')
   })
 
   it('propagates a later page failure', async () => {

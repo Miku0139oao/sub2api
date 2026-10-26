@@ -90,6 +90,21 @@ func resolveGeminiImageCount(c *gin.Context, originalModel, mappedModel string) 
 	return 0
 }
 
+// geminiRequestIsImageEndpoint 判断本次请求是否明确要求图片输出。
+//
+// 不能用 imageCount > 0 代替：普通 chat/messages 请求也可能带回内嵌图片（多模态
+// 工具输出等），把它当成专用图片端点会让分组 image_count_billing 把整条请求按张
+// 结算，丢掉文本与工具的 token 费用。专用端点只认显式意图——图片模型，或
+// generationConfig.responseModalities 含 IMAGE。
+func geminiRequestIsImageEndpoint(geminiBody []byte, models ...string) bool {
+	for _, model := range models {
+		if isImageGenerationModel(model) {
+			return true
+		}
+	}
+	return geminiRequestAsksForImageOutput(geminiBody)
+}
+
 // countGeminiInlineImageOutputs 统计一段 Gemini 响应 JSON 里的内联图片 part。
 // Gemini REST 回 camelCase 的 inlineData，官方 SDK 与部分中转会回 snake_case
 // 的 inline_data，两种都要认。

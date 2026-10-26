@@ -4,13 +4,23 @@ import type { AdminComplianceStatus } from '@/api/admin/compliance'
 import { useAdminComplianceStore } from '../adminCompliance'
 
 const api = vi.hoisted(() => ({ getStatus: vi.fn(), accept: vi.fn() }))
+const currentLocale = vi.hoisted(() => ({ value: 'en' }))
 vi.mock('@/api/admin/compliance', () => ({ default: api }))
-vi.mock('@/i18n', () => ({ getLocale: () => 'en' }))
+vi.mock('@/i18n', () => ({ getLocale: () => currentLocale.value }))
 
 function status(required: boolean, version = 'current'): AdminComplianceStatus {
   return {
-    required, version, document_path_zh: '', document_path_en: '',
-    document_url_zh: '', document_url_en: '', ack_phrase_zh: '测试', ack_phrase_en: 'test'
+    required,
+    version,
+    document_path_zh: '',
+    document_path_zh_tw: '',
+    document_path_en: '',
+    document_url_zh: '',
+    document_url_zh_tw: '',
+    document_url_en: '',
+    ack_phrase_zh: '测试',
+    ack_phrase_zh_tw: '測試',
+    ack_phrase_en: 'test'
   }
 }
 
@@ -22,6 +32,7 @@ function deferred() {
 }
 
 beforeEach(() => {
+  currentLocale.value = 'en'
   setActivePinia(createPinia())
   vi.resetAllMocks()
 })
@@ -80,4 +91,19 @@ it('still updates compliance status during a normal fetch and acceptance', async
   expect(api.accept).toHaveBeenCalledWith({ phrase: 'test', language: 'en' })
   expect(store.status).toEqual(status(false))
   expect(store.shouldShow).toBe(false)
+})
+
+it('uses the Traditional Chinese phrase for zh-TW', () => {
+  currentLocale.value = 'zh-TW'
+  const store = useAdminComplianceStore()
+  store.requireAcknowledgement()
+  expect(store.expectedPhrase).toBe('我已閱讀、理解並同意 Sub2API 部署與營運合規承諾')
+  expect(store.status?.document_path_zh_tw).toBe('docs/legal/admin-compliance.zh-TW.md')
+})
+
+it('prefers the backend-provided zh-TW phrase', () => {
+  currentLocale.value = 'zh-TW'
+  const store = useAdminComplianceStore()
+  store.requireAcknowledgement({ ack_phrase_zh_tw: '後端片語' })
+  expect(store.expectedPhrase).toBe('後端片語')
 })

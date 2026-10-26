@@ -546,6 +546,21 @@ func getGroupPlatform(c *gin.Context) string {
 	return apiKey.Group.Platform
 }
 
+// requestHeadersForLB snapshots only the headers the load-balancing seed reads,
+// so the hot path does not allocate the full header map.
+func requestHeadersForLB(c *gin.Context) map[string]string {
+	if c == nil || c.Request == nil {
+		return nil
+	}
+	out := make(map[string]string, 4)
+	for _, name := range service.CompositeLBSessionHeaderNames() {
+		if value := strings.TrimSpace(c.GetHeader(name)); value != "" {
+			out[name] = value
+		}
+	}
+	return out
+}
+
 func compositeTargetPlatformMiddleware(resolver *service.CompositeRouteResolver) gin.HandlerFunc {
 	if resolver == nil {
 		resolver = service.NewCompositeRouteResolver(nil)
@@ -580,7 +595,14 @@ func compositeTargetPlatformMiddleware(resolver *service.CompositeRouteResolver)
 		routePath := c.FullPath()
 		model := requestmodel.FromBodyForRoute(routePath, c.GetHeader("Content-Type"), body)
 		if model != "" {
-			decision, err := resolver.Resolve(c.Request.Context(), apiKey.Group.ID, model, compositeRouteEndpointForPath(c.Request.URL.Path))
+			// 跨平台负载均衡按会话固定平台，因此需要在路由解析前把会话种子
+			// 放进 context。没有会话标识的请求不加种子，退回纯 priority 顺序。
+			ctx := c.Request.Context()
+			if seed := service.CompositeLBSessionSeed(requestHeadersForLB(c), body); seed != "" {
+				ctx = service.WithCompositeLBSessionHash(ctx, seed)
+				c.Request = c.Request.WithContext(ctx)
+			}
+			decision, err := resolver.Resolve(ctx, apiKey.Group.ID, model, compositeRouteEndpointForPath(c.Request.URL.Path))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"type": "server_error", "message": "Failed to resolve composite model route"}})
 				c.Abort()

@@ -772,13 +772,46 @@ func (s *OpenAIGatewayService) calculateOpenAIImageCost(
 	multiplier float64,
 ) *CostBreakdown {
 	sizeTier := NormalizeImageBillingTierOrDefault(result.ImageSize)
+	// 分组图片价和渠道按次价都按张结算：多尺寸响应要逐档计价，否则 1K 的图会按
+	// 4K 单价结算。token 定价按整条请求结算，不能拆档。
+	if !imageCostUsesTokenBilling(s.resolveOpenAIChannelPricing(ctx, billingModel, apiKey), imageCountBillingApplies(apiKey, result.ImageEndpoint)) {
+		tierCounts := imageBillingTierCounts(result.ImageSizeBreakdown, result.ImageCount)
+		if tierCounts != nil {
+			refreshedOnce := false
+			cost, err := forEachImageBillingTier(tierCounts, func(tier string, count int) (*CostBreakdown, error) {
+				if !refreshedOnce {
+					refreshedOnce = true
+					if refreshed := s.apiKeyWithFreshGroupMediaPricing(ctx, apiKey); refreshed != apiKey {
+						apiKey = refreshed
+					}
+				}
+				return s.calculateOpenAIImageCostForTier(ctx, billingModel, apiKey, result, multiplier, tier, count), nil
+			})
+			if err == nil && cost != nil {
+				return cost
+			}
+		}
+	}
+	return s.calculateOpenAIImageCostForTier(ctx, billingModel, apiKey, result, multiplier, sizeTier, result.ImageCount)
+}
+
+// calculateOpenAIImageCostForTier 按单一尺寸档结算 count 张图片。
+func (s *OpenAIGatewayService) calculateOpenAIImageCostForTier(
+	ctx context.Context,
+	billingModel string,
+	apiKey *APIKey,
+	result *OpenAIForwardResult,
+	multiplier float64,
+	sizeTier string,
+	imageCount int,
+) *CostBreakdown {
 	resolved := s.resolveOpenAIChannelPricing(ctx, billingModel, apiKey)
 	if resolved != nil && resolved.Source == PricingSourceGroup &&
 		(resolved.Mode == BillingModePerRequest || resolved.Mode == BillingModeImage) {
 		gid := apiKey.Group.ID
 		cost, err := s.billingService.CalculateCostUnified(CostInput{
 			Ctx: ctx, Model: billingModel, GroupID: &gid, Group: apiKey.Group,
-			RequestCount: result.ImageCount, SizeTier: sizeTier,
+			Tokens: imageCostTokens(result.Usage), RequestCount: imageCount, SizeTier: sizeTier,
 			RateMultiplier: multiplier, Resolver: s.resolver, Resolved: resolved,
 			ReasoningEffort: optionalStringValue(result.ReasoningEffort),
 		})
@@ -788,24 +821,27 @@ func (s *OpenAIGatewayService) calculateOpenAIImageCost(
 	}
 	groupConfig := imagePriceConfigFromAPIKey(apiKey)
 	if apiKeyHasConfiguredImagePrice(apiKey, sizeTier) {
-		return s.billingService.CalculateImageCost(billingModel, sizeTier, result.ImageCount, groupConfig, multiplier)
+		return s.billingService.CalculateImageCost(billingModel, sizeTier, imageCount, groupConfig, multiplier)
 	}
 	if refreshed := s.apiKeyWithFreshGroupMediaPricing(ctx, apiKey); refreshed != apiKey {
 		apiKey = refreshed
 		groupConfig = imagePriceConfigFromAPIKey(apiKey)
 		if apiKeyHasConfiguredImagePrice(apiKey, sizeTier) {
-			return s.billingService.CalculateImageCost(billingModel, sizeTier, result.ImageCount, groupConfig, multiplier)
+			return s.billingService.CalculateImageCost(billingModel, sizeTier, imageCount, groupConfig, multiplier)
 		}
 	}
 	if resolved != nil && resolved.Source == PricingSourceChannel &&
 		(resolved.Mode == BillingModePerRequest || resolved.Mode == BillingModeImage) {
 		gid := apiKey.Group.ID
 		cost, err := s.billingService.CalculateCostUnified(CostInput{
-			Ctx:             ctx,
-			Model:           billingModel,
-			GroupID:         &gid,
-			Group:           apiKey.Group,
-			RequestCount:    result.ImageCount,
+			Ctx:     ctx,
+			Model:   billingModel,
+			GroupID: &gid,
+			Group:   apiKey.Group,
+			// 尺寸档未命中时 calculatePerRequestCost 会用 token 上下文匹配按上下文
+			// 分档的单价；漏传 Tokens 会让 MinTokens>0 的档位永不命中，图片按 $0 结算。
+			Tokens:          imageCostTokens(result.Usage),
+			RequestCount:    imageCount,
 			SizeTier:        sizeTier,
 			ReasoningEffort: optionalStringValue(result.ReasoningEffort),
 			RateMultiplier:  multiplier,
@@ -818,7 +854,16 @@ func (s *OpenAIGatewayService) calculateOpenAIImageCost(
 		logger.LegacyPrintf("service.openai_gateway", "Calculate image channel cost failed: %v", err)
 	}
 
-	return s.billingService.CalculateImageCost(billingModel, sizeTier, result.ImageCount, groupConfig, multiplier)
+	return s.billingService.CalculateImageCost(billingModel, sizeTier, imageCount, groupConfig, multiplier)
+}
+
+// imageCostTokens 把上游 usage 映射成按次定价匹配档位所需的 token 上下文。
+func imageCostTokens(usage OpenAIUsage) UsageTokens {
+	return UsageTokens{
+		InputTokens:       usage.InputTokens,
+		OutputTokens:      usage.OutputTokens,
+		ImageOutputTokens: usage.ImageOutputTokens,
+	}
 }
 
 func (s *OpenAIGatewayService) calculateOpenAIVideoCost(

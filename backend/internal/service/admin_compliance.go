@@ -14,13 +14,16 @@ import (
 )
 
 const (
-	AdminComplianceVersion        = "v2026.06.10"
-	AdminComplianceDocumentPathZH = "docs/legal/admin-compliance.zh.md"
-	AdminComplianceDocumentPathEN = "docs/legal/admin-compliance.en.md"
-	AdminComplianceDocumentURLZH  = "https://github.com/Wei-Shaw/sub2api/blob/main/docs/legal/admin-compliance.zh.md"
-	AdminComplianceDocumentURLEN  = "https://github.com/Wei-Shaw/sub2api/blob/main/docs/legal/admin-compliance.en.md"
-	AdminComplianceAckPhraseZH    = "我已阅读、理解并同意 Sub2API 部署与运营合规承诺"
-	AdminComplianceAckPhraseEN    = "I have read, understood, and agree to the Sub2API Deployment and Operation Compliance Commitment"
+	AdminComplianceVersion          = "v2026.06.10"
+	AdminComplianceDocumentPathZH   = "docs/legal/admin-compliance.zh.md"
+	AdminComplianceDocumentPathZHTW = "docs/legal/admin-compliance.zh-TW.md"
+	AdminComplianceDocumentPathEN   = "docs/legal/admin-compliance.en.md"
+	AdminComplianceDocumentURLZH    = "https://github.com/Wei-Shaw/sub2api/blob/main/docs/legal/admin-compliance.zh.md"
+	AdminComplianceDocumentURLZHTW  = "https://github.com/Wei-Shaw/sub2api/blob/main/docs/legal/admin-compliance.zh-TW.md"
+	AdminComplianceDocumentURLEN    = "https://github.com/Wei-Shaw/sub2api/blob/main/docs/legal/admin-compliance.en.md"
+	AdminComplianceAckPhraseZH      = "我已阅读、理解并同意 Sub2API 部署与运营合规承诺"
+	AdminComplianceAckPhraseZHTW    = "我已閱讀、理解並同意 Sub2API 部署與營運合規承諾"
+	AdminComplianceAckPhraseEN      = "I have read, understood, and agree to the Sub2API Deployment and Operation Compliance Commitment"
 
 	settingKeyAdminComplianceAcknowledgement = "admin_compliance_acknowledgement"
 )
@@ -38,25 +41,30 @@ var (
 )
 
 type AdminComplianceAcknowledgement struct {
-	Version     string    `json:"version"`
-	DocumentZH  string    `json:"document_zh"`
-	DocumentEN  string    `json:"document_en"`
-	AdminUserID int64     `json:"admin_user_id"`
-	IPAddress   string    `json:"ip_address,omitempty"`
-	UserAgent   string    `json:"user_agent,omitempty"`
-	AcceptedAt  time.Time `json:"accepted_at"`
+	Version      string    `json:"version"`
+	DocumentZH   string    `json:"document_zh"`
+	DocumentZHTW string    `json:"document_zh_tw,omitempty"`
+	DocumentEN   string    `json:"document_en"`
+	Language     string    `json:"language,omitempty"`
+	AdminUserID  int64     `json:"admin_user_id"`
+	IPAddress    string    `json:"ip_address,omitempty"`
+	UserAgent    string    `json:"user_agent,omitempty"`
+	AcceptedAt   time.Time `json:"accepted_at"`
 }
 
 type AdminComplianceStatus struct {
-	Required        bool                            `json:"required"`
-	Version         string                          `json:"version"`
-	DocumentPathZH  string                          `json:"document_path_zh"`
-	DocumentPathEN  string                          `json:"document_path_en"`
-	DocumentURLZH   string                          `json:"document_url_zh"`
-	DocumentURLEN   string                          `json:"document_url_en"`
-	AckPhraseZH     string                          `json:"ack_phrase_zh"`
-	AckPhraseEN     string                          `json:"ack_phrase_en"`
-	Acknowledgement *AdminComplianceAcknowledgement `json:"acknowledgement,omitempty"`
+	Required         bool                            `json:"required"`
+	Version          string                          `json:"version"`
+	DocumentPathZH   string                          `json:"document_path_zh"`
+	DocumentPathZHTW string                          `json:"document_path_zh_tw"`
+	DocumentPathEN   string                          `json:"document_path_en"`
+	DocumentURLZH    string                          `json:"document_url_zh"`
+	DocumentURLZHTW  string                          `json:"document_url_zh_tw"`
+	DocumentURLEN    string                          `json:"document_url_en"`
+	AckPhraseZH      string                          `json:"ack_phrase_zh"`
+	AckPhraseZHTW    string                          `json:"ack_phrase_zh_tw"`
+	AckPhraseEN      string                          `json:"ack_phrase_en"`
+	Acknowledgement  *AdminComplianceAcknowledgement `json:"acknowledgement,omitempty"`
 }
 
 type AdminComplianceAcceptInput struct {
@@ -68,18 +76,35 @@ type AdminComplianceAcceptInput struct {
 }
 
 func normalizeAdminComplianceLanguage(raw string) string {
-	raw = strings.ToLower(strings.TrimSpace(raw))
-	if strings.HasPrefix(raw, "zh") {
-		return "zh"
+	tag := strings.ToLower(strings.TrimSpace(raw))
+	if index := strings.IndexByte(tag, ','); index >= 0 {
+		tag = tag[:index]
 	}
-	return "en"
+	if index := strings.IndexByte(tag, ';'); index >= 0 {
+		tag = tag[:index]
+	}
+	tag = strings.ReplaceAll(strings.TrimSpace(tag), "_", "-")
+	if !strings.HasPrefix(tag, "zh") {
+		return "en"
+	}
+	if strings.Contains(tag, "hant") ||
+		strings.HasPrefix(tag, "zh-tw") ||
+		strings.HasPrefix(tag, "zh-hk") ||
+		strings.HasPrefix(tag, "zh-mo") {
+		return "zh-TW"
+	}
+	return "zh"
 }
 
 func expectedAdminCompliancePhrase(language string) string {
-	if normalizeAdminComplianceLanguage(language) == "zh" {
+	switch normalizeAdminComplianceLanguage(language) {
+	case "zh-TW":
+		return AdminComplianceAckPhraseZHTW
+	case "zh":
 		return AdminComplianceAckPhraseZH
+	default:
+		return AdminComplianceAckPhraseEN
 	}
-	return AdminComplianceAckPhraseEN
 }
 
 func adminComplianceAcknowledgementKey(adminUserID int64) string {
@@ -91,14 +116,17 @@ func adminComplianceAcknowledgementKey(adminUserID int64) string {
 
 func (s *SettingService) GetAdminComplianceStatus(ctx context.Context, adminUserID int64) (*AdminComplianceStatus, error) {
 	status := &AdminComplianceStatus{
-		Required:       true,
-		Version:        AdminComplianceVersion,
-		DocumentPathZH: AdminComplianceDocumentPathZH,
-		DocumentPathEN: AdminComplianceDocumentPathEN,
-		DocumentURLZH:  AdminComplianceDocumentURLZH,
-		DocumentURLEN:  AdminComplianceDocumentURLEN,
-		AckPhraseZH:    AdminComplianceAckPhraseZH,
-		AckPhraseEN:    AdminComplianceAckPhraseEN,
+		Required:         true,
+		Version:          AdminComplianceVersion,
+		DocumentPathZH:   AdminComplianceDocumentPathZH,
+		DocumentPathZHTW: AdminComplianceDocumentPathZHTW,
+		DocumentPathEN:   AdminComplianceDocumentPathEN,
+		DocumentURLZH:    AdminComplianceDocumentURLZH,
+		DocumentURLZHTW:  AdminComplianceDocumentURLZHTW,
+		DocumentURLEN:    AdminComplianceDocumentURLEN,
+		AckPhraseZH:      AdminComplianceAckPhraseZH,
+		AckPhraseZHTW:    AdminComplianceAckPhraseZHTW,
+		AckPhraseEN:      AdminComplianceAckPhraseEN,
 	}
 	if s == nil || s.settingRepo == nil {
 		return status, nil
@@ -141,13 +169,15 @@ func (s *SettingService) AcceptAdminCompliance(ctx context.Context, input AdminC
 	}
 
 	ack := AdminComplianceAcknowledgement{
-		Version:     AdminComplianceVersion,
-		DocumentZH:  AdminComplianceDocumentPathZH,
-		DocumentEN:  AdminComplianceDocumentPathEN,
-		AdminUserID: input.AdminUserID,
-		IPAddress:   strings.TrimSpace(input.IPAddress),
-		UserAgent:   strings.TrimSpace(input.UserAgent),
-		AcceptedAt:  time.Now().UTC(),
+		Version:      AdminComplianceVersion,
+		DocumentZH:   AdminComplianceDocumentPathZH,
+		DocumentZHTW: AdminComplianceDocumentPathZHTW,
+		DocumentEN:   AdminComplianceDocumentPathEN,
+		Language:     normalizeAdminComplianceLanguage(input.Language),
+		AdminUserID:  input.AdminUserID,
+		IPAddress:    strings.TrimSpace(input.IPAddress),
+		UserAgent:    strings.TrimSpace(input.UserAgent),
+		AcceptedAt:   time.Now().UTC(),
 	}
 	payload, err := json.Marshal(ack)
 	if err != nil {

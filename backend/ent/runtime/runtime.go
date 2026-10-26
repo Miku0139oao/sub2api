@@ -937,8 +937,14 @@ func init() {
 	compositemodelrouteDescPriority := compositemodelrouteFields[6].Descriptor()
 	// compositemodelroute.DefaultPriority holds the default value on creation for the priority field.
 	compositemodelroute.DefaultPriority = compositemodelrouteDescPriority.Default.(int)
+	// compositemodelrouteDescWeight is the schema descriptor for weight field.
+	compositemodelrouteDescWeight := compositemodelrouteFields[7].Descriptor()
+	// compositemodelroute.DefaultWeight holds the default value on creation for the weight field.
+	compositemodelroute.DefaultWeight = compositemodelrouteDescWeight.Default.(int)
+	// compositemodelroute.WeightValidator is a validator for the "weight" field. It is called by the builders before save.
+	compositemodelroute.WeightValidator = compositemodelrouteDescWeight.Validators[0].(func(int) error)
 	// compositemodelrouteDescEnabled is the schema descriptor for enabled field.
-	compositemodelrouteDescEnabled := compositemodelrouteFields[7].Descriptor()
+	compositemodelrouteDescEnabled := compositemodelrouteFields[8].Descriptor()
 	// compositemodelroute.DefaultEnabled holds the default value on creation for the enabled field.
 	compositemodelroute.DefaultEnabled = compositemodelrouteDescEnabled.Default.(bool)
 	errorpassthroughruleMixin := schema.ErrorPassthroughRule{}.Mixin()

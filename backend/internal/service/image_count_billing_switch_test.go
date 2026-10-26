@@ -56,30 +56,52 @@ func TestCalculateRecordUsageCost_ImageCountBillingGroupTokenPricing(t *testing.
 }
 
 // F3：渠道 token 定价 + 开关开启时必须强制按张计费，与 OpenAI 流水线一致。
+//
+// 分组不能配置 ImagePrice*，否则会在渠道分支之前被分组图片价短路，断言的金额与
+// forcePerImage 无关（旧版本正是这样，删掉开关也照样通过）。这里只保留渠道 token
+// 定价，唯一的按张价格来自渠道上的按次档位。
 func TestCalculateRecordUsageCost_ImageCountBillingChannelTokenPricing(t *testing.T) {
-	groupID := int64(902)
-	model := "gpt-image-2"
-	resolver := newOpenAITokenImageChannelPricingResolverForTest(t, groupID, model)
-	group := &Group{
-		ID:                   groupID,
-		Platform:             PlatformOpenAI,
-		Status:               StatusActive,
-		Hydrated:             true,
-		AllowImageGeneration: true,
-		ImageCountBilling:    true,
-		ImagePrice1K:         f64p(0.4),
+	for _, switchOn := range []bool{true, false} {
+		groupID := int64(902)
+		model := "gpt-image-2"
+		resolver := newOpenAITokenImageChannelPricingResolverForTest(t, groupID, model)
+		cached, ok := resolver.channelService.cache.Load().(*channelCache)
+		require.True(t, ok)
+		cached.pricingByGroupModel[channelModelKey{groupID: groupID, model: model}] = &ChannelModelPricing{
+			BillingMode: BillingModeToken,
+			InputPrice:  f64p(3e-6),
+			OutputPrice: f64p(15e-6),
+			Intervals: []PricingInterval{
+				{TierLabel: "1K", PerRequestPrice: f64p(0.4)},
+			},
+		}
+		group := &Group{
+			ID:                   groupID,
+			Platform:             PlatformOpenAI,
+			Status:               StatusActive,
+			Hydrated:             true,
+			AllowImageGeneration: true,
+			ImageCountBilling:    switchOn,
+		}
+		apiKey := &APIKey{ID: 2, GroupID: &groupID, Group: group}
+		svc := &GatewayService{billingService: resolver.billingService, resolver: resolver}
+
+		cost := svc.calculateRecordUsageCost(context.Background(), &ForwardResult{
+			Model: model, ImageCount: 2, ImageSize: "1K", ImageEndpoint: true,
+			Usage: ClaudeUsage{InputTokens: 1_000_000, OutputTokens: 10_000},
+		}, apiKey, model, 1, 1, time.Time{})
+
+		require.NotNil(t, cost)
+		if switchOn {
+			// 渠道 token 定价 + 开关：跳过 token 分支，回落到默认图片价（1K = 0.134） × 2 张。
+			require.InDelta(t, defaultImageGenerationPrice*2, cost.TotalCost, 1e-12, "开关开启必须按张结算")
+			require.Equal(t, string(BillingModeImage), cost.BillingMode)
+			continue
+		}
+		// 开关关闭：保持渠道 token 计费，不能被按张价格覆盖。
+		require.NotEqual(t, string(BillingModeImage), cost.BillingMode)
+		require.InDelta(t, 3e-6*1_000_000+15e-6*10_000, cost.TotalCost, 1e-9, "开关关闭应保持 token 计费")
 	}
-	apiKey := &APIKey{ID: 2, GroupID: &groupID, Group: group}
-	svc := &GatewayService{billingService: resolver.billingService, resolver: resolver}
-
-	cost := svc.calculateRecordUsageCost(context.Background(), &ForwardResult{
-		Model: model, ImageCount: 2, ImageSize: "1K", ImageEndpoint: true,
-		Usage: ClaudeUsage{InputTokens: 1_000_000, OutputTokens: 10_000},
-	}, apiKey, model, 1, 1, time.Time{})
-
-	require.NotNil(t, cost)
-	require.InDelta(t, 0.8, cost.TotalCost, 1e-12)
-	require.Equal(t, string(BillingModeImage), cost.BillingMode)
 }
 
 // F4：开关只作用于图片端点，混合请求仍按 token 计费。
