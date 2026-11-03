@@ -7,7 +7,7 @@ export default {
   "secretWarning": "完整金鑰僅展示本次，請立即複製儲存。關閉後無法再次檢視。",
   "copySecret": "複製金鑰",
   "dismissSecret": "已儲存，關閉展示",
-  "create": "建立受限金鑰",
+  "create": "建立管理金鑰",
   "refresh": "重新整理列表",
   "loading": "正在載入金鑰及權限目錄…",
   "noDescription": "無備註",
@@ -33,7 +33,7 @@ export default {
   "accountTypes": "帳戶型別（僅限制帳戶操作，未選表示無帳戶權限）",
   "platforms": "平臺（可多選，未選表示不限平臺）",
   "accountOperations": "允許的帳戶操作",
-  "groupOperations": "允許的群組模型操作（同樣受上方群組與平臺限制）",
+  "groupOperations": "允許的群組操作（受上方群組與平臺限制）",
   "modelAllowlistHint": "群組模型白名單會限制群組可呼叫的模型。",
   "removeRule": "刪除規則",
   "addRule": "新增資源規則",
@@ -71,5 +71,255 @@ export default {
   "rotateConfirm": "輪替“{name}”將立即使原金鑰失效，是否繼續？",
   "revokeConfirm": "永久撤銷“{name}”後無法恢復，是否繼續？",
   "deleteConfirm": "確定刪除“{name}”的金鑰記錄？刪除只是從列表移除，歷史操作記錄仍會繼續保留。",
-  "legacy": "舊版全權金鑰相容區（建議遷移到受限金鑰）"
+  "legacy": "舊版全權金鑰相容區（建議遷移到受限金鑰）",
+  "fullAccessLabel": "全權存取（相容舊版管理員 Key）",
+  "fullAccessWarning": "開啟後，此金鑰可存取全部管理資源、讀取敏感資料並修改帳戶和財務配置；未來新增的管理介面也將允許存取。群組、平臺、帳戶型別和操作規則不再限制此金鑰。僅限管理員登入會話及二次驗證的介面仍遵循原要求。",
+  "rulesSuspended": "資源規則已暫停，關閉全權存取後恢復；有效期、IP 限制、限流和稽核繼續生效。",
+  "fullAccessConfirmTitle": "確認開啟全權存取",
+  "fullAccessPhrase": "開啟全權存取",
+  "fullAccessPhraseHint": "請輸入“{phrase}”以確認：",
+  "unknownPermission": "未知權限（{id}）",
+  "permissions": {
+    "accounts_didentity_dread": {
+      "label": "讀取帳戶電子郵件、套餐及建立時間（不含權杖）",
+      "category": "帳戶"
+    },
+    "accounts_dusage_dread": {
+      "label": "讀取及主動重新整理授權帳戶額度與快照",
+      "category": "帳戶"
+    },
+    "accounts_dstats_dread": {
+      "label": "讀取帳戶用量與費用統計",
+      "category": "帳戶"
+    },
+    "openai_dquota_dread": {
+      "label": "查詢 OpenAI 上游額度與重置次數",
+      "category": "OpenAI"
+    },
+    "openai_dquota_dreset": {
+      "label": "消耗 OpenAI 重置次數恢復額度",
+      "category": "OpenAI"
+    },
+    "openai_dreferrals_dread": {
+      "label": "查詢 OpenAI 邀請資格與次數",
+      "category": "OpenAI"
+    },
+    "openai_dreferrals_dinvite": {
+      "label": "傳送 OpenAI 邀請郵件",
+      "category": "OpenAI"
+    },
+    "accounts_doptions_dwrite": {
+      "label": "寫入 OpenAI OAuth 身份與連線選項",
+      "category": "帳戶"
+    },
+    "accounts_drate_dwrite": {
+      "label": "設定帳戶計費倍率",
+      "category": "帳戶"
+    },
+    "groups_dlist_dread": {
+      "label": "讀取所選群組基本資訊（名稱、平臺、狀態）",
+      "category": "群組"
+    },
+    "groups_dcapacity_dread": {
+      "label": "讀取所選群組容量（整個群組，不按帳戶型別過濾）",
+      "category": "群組"
+    },
+    "openai_dtokens_drefresh": {
+      "label": "重新整理呼叫方提供的 OpenAI 權杖（返回權杖，可使用所選代理）",
+      "category": "OAuth"
+    },
+    "accounts_dread": {
+      "label": "檢視帳戶（脫敏）",
+      "category": "帳戶"
+    },
+    "accounts_dcreate": {
+      "label": "建立帳戶",
+      "category": "帳戶"
+    },
+    "accounts_dupdate": {
+      "label": "編輯名稱與備註",
+      "category": "帳戶"
+    },
+    "accounts_dcredentials": {
+      "label": "寫入憑證（不包含讀取）",
+      "category": "帳戶"
+    },
+    "accounts_dmodels_dwrite": {
+      "label": "編輯帳戶白名單模型 ID 與對映",
+      "category": "帳戶"
+    },
+    "accounts_dnetwork": {
+      "label": "修改接入地址、代理與連線選項",
+      "category": "帳戶"
+    },
+    "accounts_dstatus": {
+      "label": "啟用、停用與排程開關",
+      "category": "帳戶"
+    },
+    "accounts_dschedule": {
+      "label": "修改並行、優先順序與有效期",
+      "category": "帳戶"
+    },
+    "accounts_drefresh": {
+      "label": "重新整理 OAuth 憑證",
+      "category": "帳戶"
+    },
+    "accounts_drecover": {
+      "label": "清除帳戶錯誤與限流狀態",
+      "category": "帳戶"
+    },
+    "accounts_ddelete": {
+      "label": "刪除帳戶（影響共享群組）",
+      "category": "帳戶"
+    },
+    "accounts_dgroups": {
+      "label": "調整授權群組關聯",
+      "category": "帳戶"
+    },
+    "groups_dmodels_dread": {
+      "label": "讀取所選群組模型白名單與候選 ID",
+      "category": "群組模型"
+    },
+    "groups_dmodels_dwrite": {
+      "label": "編輯所選群組模型白名單（影響整個群組）",
+      "category": "群組模型"
+    },
+    "proxies_dread": {
+      "label": "讀取代理 IP 候選（分頁，不含認證憑證）",
+      "category": "代理"
+    },
+    "models_ddefaults_dread": {
+      "label": "讀取預設白名單模型 ID（含預設對映）",
+      "category": "模型"
+    },
+    "dashboard_dread": {
+      "label": "讀取全站經營報表",
+      "category": "報表"
+    },
+    "users_dread": {
+      "label": "讀取全站使用者資料（含聯絡方式）",
+      "category": "使用者"
+    },
+    "users_dbalance_dread": {
+      "label": "讀取全站使用者餘額及流水",
+      "category": "財務"
+    },
+    "users_dbalance_dwrite": {
+      "label": "增減任意使用者餘額",
+      "category": "財務"
+    },
+    "users_dquotas_dread": {
+      "label": "讀取全站使用者平臺額度",
+      "category": "使用者"
+    },
+    "users_dquotas_dwrite": {
+      "label": "修改與重置全站使用者平臺額度",
+      "category": "使用者"
+    },
+    "groups_dread": {
+      "label": "讀取所有群組配置",
+      "category": "群組"
+    },
+    "usage_dread": {
+      "label": "讀取全站用量明細及使用者用量",
+      "category": "報表"
+    },
+    "payment_dread": {
+      "label": "讀取全站支付訂單與報表",
+      "category": "財務"
+    },
+    "payment_dcancel": {
+      "label": "取消支付訂單",
+      "category": "財務"
+    },
+    "payment_dfulfill": {
+      "label": "重新履約支付訂單",
+      "category": "財務"
+    },
+    "payment_drefund": {
+      "label": "發起退款及確認退款結果",
+      "category": "財務"
+    },
+    "payment_dplans_dread": {
+      "label": "讀取全部支付套餐",
+      "category": "財務"
+    },
+    "payment_dplans_dwrite": {
+      "label": "建立、修改和刪除支付套餐",
+      "category": "財務"
+    },
+    "subscriptions_dread": {
+      "label": "讀取全站訂閱記錄",
+      "category": "訂閱"
+    },
+    "subscriptions_dassign": {
+      "label": "分配全站使用者訂閱",
+      "category": "訂閱"
+    },
+    "subscriptions_dextend": {
+      "label": "延長訂閱有效期",
+      "category": "訂閱"
+    },
+    "subscriptions_drevoke": {
+      "label": "撤銷訂閱",
+      "category": "訂閱"
+    },
+    "subscriptions_drestore": {
+      "label": "恢復訂閱",
+      "category": "訂閱"
+    },
+    "subscriptions_dreset": {
+      "label": "重置訂閱額度",
+      "category": "訂閱"
+    },
+    "announcements_dread": {
+      "label": "讀取所有公告與閱讀記錄",
+      "category": "內容"
+    },
+    "announcements_dwrite": {
+      "label": "建立、發布與修改公告",
+      "category": "內容"
+    },
+    "announcements_ddelete": {
+      "label": "刪除公告",
+      "category": "內容"
+    },
+    "promo_dread": {
+      "label": "讀取優惠碼及使用記錄",
+      "category": "財務"
+    },
+    "promo_dwrite": {
+      "label": "建立與修改優惠碼權益",
+      "category": "財務"
+    },
+    "promo_ddelete": {
+      "label": "刪除優惠碼",
+      "category": "財務"
+    },
+    "ops_dread": {
+      "label": "讀取全站運維指標",
+      "category": "監控"
+    },
+    "ops_derrors_dread": {
+      "label": "讀取全站請求錯誤詳情（敏感）",
+      "category": "監控"
+    },
+    "ops_derrors_dresolve": {
+      "label": "標記請求錯誤處理狀態",
+      "category": "監控"
+    },
+    "ops_dalerts_dread": {
+      "label": "讀取全站告警規則與事件",
+      "category": "監控"
+    },
+    "ops_dalerts_dwrite": {
+      "label": "修改告警規則、狀態與靜默",
+      "category": "監控"
+    },
+    "system_dread": {
+      "label": "讀取系統版本與可更新版本",
+      "category": "系統"
+    }
+  },
+  "listSeparator": "、"
 }
