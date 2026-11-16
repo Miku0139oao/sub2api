@@ -544,6 +544,17 @@ func (s *BillingService) initFallbackPricing() {
 		SupportsCacheBreakdown: false,
 	}
 
+	// Gemini App `gemini-flash-lite` native alias (Google AI pricing for
+	// gemini-flash-lite-latest: $0.10 input / $0.40 output / $0.01 cached input
+	// per MTok). The other two aliases reuse existing cards, see
+	// getFallbackPricing.
+	s.fallbackPrices["gemini-flash-lite"] = &ModelPricing{
+		InputPricePerToken:     0.1e-6,
+		OutputPricePerToken:    0.4e-6,
+		CacheReadPricePerToken: 0.01e-6,
+		SupportsCacheBreakdown: false,
+	}
+
 	// OpenAI GPT-5.4（业务指定价格）
 	s.fallbackPrices["gpt-5.4"] = &ModelPricing{
 		InputPricePerToken:             2.5e-6,  // $2.5 per MTok
@@ -1151,6 +1162,18 @@ func (s *BillingService) getFallbackPricing(model string) *ModelPricing {
 	}
 	if strings.Contains(modelLower, "gemini-4-argon") {
 		return s.fallbackPrices["gemini-4-argon"]
+	}
+	// Gemini App 原生模型别名（不带 4 字样的名字不会被上面的子串匹配命中）。
+	// gemini-argon 与 Gemini 4 Argon 同价；gemini-hydrogen 是 Gemini 4 的 FAST 档，
+	// 官方未公布独立价卡，按 Flash 档估算，运营方可用 pricing.override_file 或渠道
+	// 定价覆盖；gemini-flash-lite 用同名的 Flash Lite 价卡。
+	switch modelLower {
+	case "gemini-argon":
+		return s.fallbackPrices["gemini-4-argon"]
+	case "gemini-hydrogen":
+		return s.fallbackPrices["gemini-3.8-flash"]
+	case "gemini-flash-lite":
+		return s.fallbackPrices["gemini-flash-lite"]
 	}
 
 	// DeepSeek 系列：官方模型 V4 Pro/Flash（含 vision-exp）按各自价卡；

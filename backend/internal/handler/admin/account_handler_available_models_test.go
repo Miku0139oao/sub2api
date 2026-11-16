@@ -604,3 +604,63 @@ func TestAccountHandlerGetAvailableModels_TypeSafeOnlyReturnsJev(t *testing.T) {
 		require.Equal(t, "jev-latest", resp.Data[0].ID)
 	}
 }
+
+func TestAccountHandlerGetAvailableModels_GeminiAppReturnsNativeAliases(t *testing.T) {
+	svc := &availableModelsAdminService{
+		stubAdminService: newStubAdminService(),
+		account: service.Account{
+			ID:       46,
+			Name:     "gemini-app-oauth",
+			Platform: service.PlatformGeminiApp,
+			Type:     service.AccountTypeOAuth,
+			Status:   service.StatusActive,
+			Credentials: map[string]any{
+				"refresh_token": "1//refresh",
+			},
+		},
+	}
+	router := setupAvailableModelsRouter(svc)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/accounts/46/models", nil)
+	router.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var resp struct {
+		Data []struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	require.Len(t, resp.Data, 3)
+
+	ids := make([]string, 0, len(resp.Data))
+	for _, model := range resp.Data {
+		ids = append(ids, model.ID)
+		require.NotContains(t, strings.ToLower(model.ID), "claude")
+	}
+	require.Equal(t, []string{"gemini-argon", "gemini-hydrogen", "gemini-flash-lite"}, ids)
+}
+
+func TestAvailableModelsAdminServiceExposesGeminiAppNativeAliases(t *testing.T) {
+	svc := &availableModelsAdminService{
+		stubAdminService: newStubAdminService(),
+		account: service.Account{
+			ID:       47,
+			Name:     "gemini-app-oauth-models",
+			Platform: service.PlatformGeminiApp,
+			Type:     service.AccountTypeOAuth,
+			Status:   service.StatusActive,
+		},
+	}
+	router := setupAvailableModelsRouter(svc)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/accounts/47/models", nil)
+	router.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Contains(t, rec.Body.String(), "gemini-argon")
+	require.NotContains(t, rec.Body.String(), "claude-")
+}

@@ -313,6 +313,16 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 			}
 			setActualUpstreamEndpoint(c, EndpointAntigravityGenerateContent)
 			result, err = h.antigravityGatewayService.ForwardAsChatCompletions(c.Request.Context(), c, account, forwardBody, parsedReq)
+		} else if account.Platform == service.PlatformGeminiApp {
+			if h.geminiAppGatewayService == nil {
+				h.chatCompletionsErrorResponse(c, http.StatusBadGateway, "upstream_error", "Gemini App service is not configured")
+				if accountReleaseFunc != nil {
+					accountReleaseFunc()
+				}
+				return
+			}
+			setActualUpstreamEndpoint(c, service.GeminiAppUpstreamEndpoint)
+			result, err = h.geminiAppGatewayService.ForwardAsChatCompletions(c.Request.Context(), c, account, forwardBody)
 		} else {
 			result, err = h.gatewayService.ForwardAsChatCompletions(c.Request.Context(), c, account, forwardBody, parsedReq)
 		}

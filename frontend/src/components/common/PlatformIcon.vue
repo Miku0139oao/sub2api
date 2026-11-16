@@ -71,6 +71,15 @@
     <rect x="65.5996" y="44.8008" width="9.6" height="28.8" rx="4.8" />
     <rect x="36.8008" y="44.8008" width="9.6" height="28.8" rx="4.8" />
   </svg>
+  <!-- Gemini App icon (rounded app tile with sparkle) -->
+  <svg v-else-if="platform === 'gemini_app'" :class="sizeClass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="2.5" y="2.5" width="19" height="19" rx="5" />
+    <path
+      stroke="none"
+      fill="currentColor"
+      d="M12 6.2l1.35 3.45L16.8 11l-3.45 1.35L12 15.8l-1.35-3.45L7.2 11l3.45-1.35z"
+    />
+  </svg>
   <!-- Composite group icon -->
   <svg v-else-if="platform === 'composite'" :class="sizeClass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
     <circle cx="6" cy="12" r="3" />

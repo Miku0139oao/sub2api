@@ -306,6 +306,16 @@ func (h *GatewayHandler) Responses(c *gin.Context) {
 			}
 			setActualUpstreamEndpoint(c, EndpointAntigravityGenerateContent)
 			result, err = h.antigravityGatewayService.ForwardAsResponses(requestCtx, c, account, forwardBody, parsedReq)
+		} else if account.Platform == service.PlatformGeminiApp {
+			if h.geminiAppGatewayService == nil {
+				h.responsesErrorResponse(c, http.StatusBadGateway, "upstream_error", "Gemini App service is not configured")
+				if accountReleaseFunc != nil {
+					accountReleaseFunc()
+				}
+				return
+			}
+			setActualUpstreamEndpoint(c, service.GeminiAppUpstreamEndpoint)
+			result, err = h.geminiAppGatewayService.ForwardAsResponses(requestCtx, c, account, forwardBody)
 		} else {
 			result, err = h.gatewayService.ForwardAsResponses(requestCtx, c, account, forwardBody, parsedReq)
 		}

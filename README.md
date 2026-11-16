@@ -906,6 +906,30 @@ Antigravity accounts support optional **hybrid scheduling**. When enabled, the g
 
 ---
 
+## Gemini App Support
+
+Sub2API can sign in to Gemini App with a Google account and serve it through OpenAI-compatible endpoints. The gateway speaks the native `ProcessQuery` RPC directly, so no external bridge service is required.
+
+### Endpoints
+
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /v1/chat/completions`, `POST /gemini-app/v1/chat/completions` | Chat Completions |
+| `POST /v1/responses`, `POST /gemini-app/v1/responses` | Responses |
+| `GET /v1/models`, `GET /gemini-app/v1/models` | Native model list |
+
+Native models: `gemini-argon` (Ultra tier, default), `gemini-hydrogen` (FAST tier) and `gemini-flash-lite` (Flash Lite tier). `reasoning_effort` / `thinking_level` map to the native 0/1/2/4 levels; Deep Think (asynchronous level 3) is rejected.
+
+### Account configuration
+
+1. Inject a Gemini App Google OAuth client profile through `GEMINI_APP_OAUTH_PROFILE` or `GEMINI_APP_OAUTH_PROFILE_FILE`.
+2. Generate an authorization URL from the admin dashboard, finish Google sign-in, then paste the loopback callback URL (or its `code`) back into the dialog.
+3. Alternatively, paste an existing refresh token when creating the account.
+
+Anthropic Messages (`/v1/messages`) is not supported for this platform and image input is rejected. Upstream exposes no quota API, so the account usage page shows local 24-hour usage. See [Gemini App](docs/GEMINI_APP.md) for the full operator guide.
+
+---
+
 ## Project Structure
 
 ```

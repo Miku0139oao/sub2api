@@ -22,7 +22,9 @@
                     ? 'from-purple-500 to-purple-600'
                     : isGrok
                       ? 'from-zinc-700 to-zinc-900'
-                      : 'from-orange-500 to-orange-600'
+                      : isGeminiApp
+                        ? 'from-lime-500 to-lime-600'
+                        : 'from-orange-500 to-orange-600'
             ]"
           >
             <Icon name="sparkles" size="md" class="text-white" />
@@ -41,7 +43,9 @@
                       ? t('admin.accounts.antigravityAccount')
                       : isGrok
                         ? t('admin.accounts.grokAccount')
-                        : t('admin.accounts.claudeCodeAccount')
+                        : isGeminiApp
+                          ? t('admin.accounts.geminiAppAccount')
+                          : t('admin.accounts.claudeCodeAccount')
               }}
             </span>
           </div>
@@ -130,12 +134,12 @@
         :show-help="isAnthropic"
         :show-proxy-warning="isAnthropic"
         :show-cookie-option="isAnthropic"
-        :show-refresh-token-option="isOpenAI || isAntigravity || isGrok"
+        :show-refresh-token-option="isOpenAI || isAntigravity || isGrok || isGeminiApp"
         :show-sso-option="isGrok"
         :show-email-password-option="false"
         :allow-multiple="false"
         :method-label="t('admin.accounts.inputMethod')"
-        :platform="isOpenAI ? 'openai' : isGemini ? 'gemini' : isAntigravity ? 'antigravity' : isGrok ? 'grok' : 'anthropic'"
+        :platform="isGeminiApp ? 'gemini_app' : isOpenAI ? 'openai' : isGemini ? 'gemini' : isAntigravity ? 'antigravity' : isGrok ? 'grok' : 'anthropic'"
         :show-project-id="isGemini && geminiOAuthType === 'code_assist'"
         :initial-input-method="grokInitialInputMethod"
         @generate-url="handleGenerateUrl"
@@ -202,6 +206,7 @@ import {
 import { useOpenAIOAuth } from '@/composables/useOpenAIOAuth'
 import { useGeminiOAuth } from '@/composables/useGeminiOAuth'
 import { useAntigravityOAuth } from '@/composables/useAntigravityOAuth'
+import { useGeminiAppOAuth } from '@/composables/useGeminiAppOAuth'
 import { useGrokOAuth } from '@/composables/useGrokOAuth'
 import type { Account } from '@/types'
 import BaseDialog from '@/components/common/BaseDialog.vue'
@@ -253,7 +258,9 @@ const isOpenAILike = computed(() => isOpenAI.value)
 const isGemini = computed(() => props.account?.platform === 'gemini')
 const isAnthropic = computed(() => props.account?.platform === 'anthropic')
 const isAntigravity = computed(() => props.account?.platform === 'antigravity')
+const geminiAppOAuth = useGeminiAppOAuth()
 const isGrok = computed(() => props.account?.platform === 'grok')
+const isGeminiApp = computed(() => props.account?.platform === 'gemini_app')
 
 /**
  * Grok reauth default tab (password auth is hidden):
@@ -276,6 +283,7 @@ const currentAuthUrl = computed(() => {
   if (isGemini.value) return geminiOAuth.authUrl.value
   if (isAntigravity.value) return antigravityOAuth.authUrl.value
   if (isGrok.value) return grokOAuth.authUrl.value
+  if (isGeminiApp.value) return geminiAppOAuth.authUrl.value
   return claudeOAuth.authUrl.value
 })
 const currentSessionId = computed(() => {
@@ -283,6 +291,7 @@ const currentSessionId = computed(() => {
   if (isGemini.value) return geminiOAuth.sessionId.value
   if (isAntigravity.value) return antigravityOAuth.sessionId.value
   if (isGrok.value) return grokOAuth.sessionId.value
+  if (isGeminiApp.value) return geminiAppOAuth.sessionId.value
   return claudeOAuth.sessionId.value
 })
 const currentLoading = computed(() => {
@@ -290,6 +299,7 @@ const currentLoading = computed(() => {
   if (isGemini.value) return geminiOAuth.loading.value
   if (isAntigravity.value) return antigravityOAuth.loading.value
   if (isGrok.value) return grokOAuth.loading.value
+  if (isGeminiApp.value) return geminiAppOAuth.loading.value
   return claudeOAuth.loading.value
 })
 const currentError = computed(() => {
@@ -297,6 +307,7 @@ const currentError = computed(() => {
   if (isGemini.value) return geminiOAuth.error.value
   if (isAntigravity.value) return antigravityOAuth.error.value
   if (isGrok.value) return grokOAuth.error.value
+  if (isGeminiApp.value) return geminiAppOAuth.error.value
   return claudeOAuth.error.value
 })
 
@@ -312,6 +323,7 @@ const isManualInputMethod = computed(() => {
     isGemini.value ||
     isAntigravity.value ||
     isGrok.value ||
+    isGeminiApp.value ||
     method === 'manual'
   )
 })
@@ -359,6 +371,7 @@ const resetState = () => {
   geminiOAuth.resetState()
   antigravityOAuth.resetState()
   grokOAuth.resetState()
+  geminiAppOAuth.resetState()
   oauthFlowRef.value?.reset()
 }
 
@@ -380,6 +393,8 @@ const handleGenerateUrl = async () => {
     await antigravityOAuth.generateAuthUrl(props.account.proxy_id)
   } else if (isGrok.value) {
     await grokOAuth.generateAuthUrl(props.account.proxy_id)
+  } else if (isGeminiApp.value) {
+    await geminiAppOAuth.generateAuthUrl(props.account.proxy_id)
   } else {
     await claudeOAuth.generateAuthUrl(addMethod.value, props.account.proxy_id)
   }
@@ -493,6 +508,50 @@ const handleExchangeCode = async () => {
     } catch (error: any) {
       antigravityOAuth.error.value = error.response?.data?.detail || t('admin.accounts.oauth.authFailed')
       appStore.showError(antigravityOAuth.error.value)
+    }
+  } else if (isGeminiApp.value) {
+    // Gemini App OAuth flow (Google flexible-api, loopback callback)
+    const sessionId = geminiAppOAuth.sessionId.value
+    if (!sessionId) return
+
+    const stateFromInput = oauthFlowRef.value?.oauthState || ''
+    const stateToUse = stateFromInput || geminiAppOAuth.state.value
+    if (!stateToUse) {
+      geminiAppOAuth.error.value = t('admin.accounts.oauth.authFailed')
+      appStore.showError(geminiAppOAuth.error.value)
+      return
+    }
+
+    geminiAppOAuth.loading.value = true
+    geminiAppOAuth.error.value = ''
+
+    try {
+      const tokenInfo = await geminiAppOAuth.exchangeAuthCode({
+        code: authCode.trim(),
+        sessionId,
+        state: stateToUse,
+        proxyId: props.account.proxy_id
+      })
+      if (!tokenInfo) return
+
+      const credentials = geminiAppOAuth.buildCredentials(tokenInfo)
+      const updatedAccount = await adminAPI.accounts.applyOAuthCredentials(props.account.id, {
+        type: 'oauth',
+        credentials
+      })
+
+      appStore.showSuccess(t('admin.accounts.reAuthorizedSuccess'))
+      emit('reauthorized', updatedAccount)
+      handleClose()
+    } catch (error: any) {
+      geminiAppOAuth.error.value =
+        error.response?.data?.detail ||
+        error.response?.data?.message ||
+        error.message ||
+        t('admin.accounts.oauth.authFailed')
+      appStore.showError(geminiAppOAuth.error.value)
+    } finally {
+      geminiAppOAuth.loading.value = false
     }
   } else if (isGrok.value) {
     const sessionId = grokOAuth.sessionId.value
@@ -664,6 +723,36 @@ const handleValidateRefreshToken = async (refreshTokenInput: string) => {
       appStore.showError(openaiOAuth.error.value)
     } finally {
       openaiOAuth.loading.value = false
+    }
+    return
+  }
+
+  if (isGeminiApp.value) {
+    geminiAppOAuth.loading.value = true
+    geminiAppOAuth.error.value = ''
+    try {
+      const tokenInfo = await geminiAppOAuth.validateRefreshToken(
+        refreshToken,
+        props.account.proxy_id
+      )
+      if (!tokenInfo) return
+
+      const updatedAccount = await adminAPI.accounts.applyOAuthCredentials(props.account.id, {
+        type: 'oauth',
+        credentials: geminiAppOAuth.buildCredentials(tokenInfo, refreshToken)
+      })
+      appStore.showSuccess(t('admin.accounts.reAuthorizedSuccess'))
+      emit('reauthorized', updatedAccount)
+      handleClose()
+    } catch (error: any) {
+      geminiAppOAuth.error.value =
+        error.response?.data?.detail ||
+        error.response?.data?.message ||
+        error.message ||
+        t('admin.accounts.oauth.authFailed')
+      appStore.showError(geminiAppOAuth.error.value)
+    } finally {
+      geminiAppOAuth.loading.value = false
     }
     return
   }

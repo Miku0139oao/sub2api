@@ -2120,6 +2120,8 @@ func guessPlatformFromPath(path string) string {
 	switch {
 	case strings.HasPrefix(p, "/antigravity/"):
 		return service.PlatformAntigravity
+	case strings.HasPrefix(p, "/gemini-app/"):
+		return service.PlatformGeminiApp
 	case strings.HasPrefix(p, "/v1beta/"):
 		return service.PlatformGemini
 	case strings.Contains(p, "/responses"), strings.Contains(p, "/images/"):

@@ -704,6 +704,30 @@ Antigravity アカウントはオプションの**ハイブリッドスケジュ
 
 ---
 
+## Gemini App サポート
+
+Sub2API は Google アカウントで Gemini App にサインインし、OpenAI 互換エンドポイント経由で提供できます。ゲートウェイはネイティブの `ProcessQuery` RPC に直接接続するため、外部ブリッジサービスは不要です。
+
+### エンドポイント
+
+| エンドポイント | 用途 |
+|----------|------|
+| `POST /v1/chat/completions`、`POST /gemini-app/v1/chat/completions` | Chat Completions |
+| `POST /v1/responses`、`POST /gemini-app/v1/responses` | Responses |
+| `GET /v1/models`、`GET /gemini-app/v1/models` | ネイティブモデル一覧 |
+
+ネイティブモデル：`gemini-argon`（Ultra、既定）、`gemini-hydrogen`（FAST）、`gemini-flash-lite`（Flash Lite）。`reasoning_effort` / `thinking_level` はネイティブの 0/1/2/4 レベルにマッピングされます。Deep Think（非同期のレベル 3）は拒否されます。
+
+### アカウント設定
+
+1. `GEMINI_APP_OAUTH_PROFILE` または `GEMINI_APP_OAUTH_PROFILE_FILE` で Gemini App の Google OAuth クライアントプロファイルを注入します。
+2. 管理画面で認証 URL を生成し、Google サインイン完了後にブラウザの loopback コールバック URL（またはその `code`）をダイアログへ貼り付けます。
+3. アカウント作成時に既存のリフレッシュトークンを貼り付けることもできます。
+
+このプラットフォームは Anthropic Messages（`/v1/messages`）に対応せず、画像入力も拒否します。上流にクォータ API がないため、アカウントの使用状況ページには直近 24 時間のローカル使用量が表示されます。詳細は [Gemini App](docs/GEMINI_APP.md) を参照してください。
+
+---
+
 ## プロジェクト構成
 
 ```

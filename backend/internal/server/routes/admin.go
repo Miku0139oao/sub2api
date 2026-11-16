@@ -60,6 +60,9 @@ func RegisterAdminRoutes(
 		// Antigravity OAuth
 		registerAntigravityOAuthRoutes(admin, h)
 
+		// Gemini App OAuth
+		registerGeminiAppOAuthRoutes(admin, h)
+
 		// Grok OAuth
 		registerGrokOAuthRoutes(admin, h)
 
@@ -487,6 +490,16 @@ func registerAntigravityOAuthRoutes(admin *gin.RouterGroup, h *handler.Handlers)
 		antigravity.POST("/oauth/auth-url", h.Admin.AntigravityOAuth.GenerateAuthURL)
 		antigravity.POST("/oauth/exchange-code", h.Admin.AntigravityOAuth.ExchangeCode)
 		antigravity.POST("/oauth/refresh-token", h.Admin.AntigravityOAuth.RefreshToken)
+	}
+}
+
+func registerGeminiAppOAuthRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	geminiApp := admin.Group("/gemini-app")
+	{
+		geminiApp.GET("/oauth/capabilities", h.Admin.GeminiAppOAuth.GetCapabilities)
+		geminiApp.POST("/oauth/auth-url", h.Admin.GeminiAppOAuth.GenerateAuthURL)
+		geminiApp.POST("/oauth/exchange-code", h.Admin.GeminiAppOAuth.ExchangeCode)
+		geminiApp.POST("/oauth/refresh-token", h.Admin.GeminiAppOAuth.RefreshToken)
 	}
 }
 

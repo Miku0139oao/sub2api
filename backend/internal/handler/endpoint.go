@@ -245,6 +245,10 @@ func DeriveUpstreamEndpoint(inbound, rawRequestPath, platform string) string {
 			return EndpointGeminiModels
 		}
 		return EndpointMessages
+
+	case service.PlatformGeminiApp:
+		// Gemini App 走原生 ProcessQuery RPC，没有 OpenAI 形态的上游端点。
+		return service.GeminiAppUpstreamEndpoint
 	}
 
 	// Unknown platform — fall back to inbound.
@@ -331,7 +335,7 @@ func GetUpstreamEndpoint(c *gin.Context, platform string) string {
 	// OpenAI 转发服务维护独立的运行时端点上下文，覆盖普通入站推导。
 	// 这对 force_chat_completions 的错误路径尤为重要：此时可能没有
 	// ForwardResult，不能把入站 /v1/responses 误报成上游端点。
-	if platform == service.PlatformOpenAI || platform == service.PlatformGrok || service.IsMultiProtocolAPIKeyProvider(platform) {
+	if platform == service.PlatformOpenAI || platform == service.PlatformGrok || platform == service.PlatformGeminiApp || service.IsMultiProtocolAPIKeyProvider(platform) {
 		if endpoint := service.GetActualOpenAIUpstreamEndpoint(c); endpoint != "" {
 			return endpoint
 		}

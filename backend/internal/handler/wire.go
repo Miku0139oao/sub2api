@@ -22,6 +22,7 @@ func ProvideAdminHandlers(
 	openaiOAuthHandler *admin.OpenAIOAuthHandler,
 	geminiOAuthHandler *admin.GeminiOAuthHandler,
 	antigravityOAuthHandler *admin.AntigravityOAuthHandler,
+	geminiAppOAuthHandler *admin.GeminiAppOAuthHandler,
 	grokOAuthHandler *admin.GrokOAuthHandler,
 	cnProviderHandler *admin.CNProviderHandler,
 	proxyHandler *admin.ProxyHandler,
@@ -68,6 +69,7 @@ func ProvideAdminHandlers(
 		OpenAIOAuth:            openaiOAuthHandler,
 		GeminiOAuth:            geminiOAuthHandler,
 		AntigravityOAuth:       antigravityOAuthHandler,
+		GeminiAppOAuth:         geminiAppOAuthHandler,
 		GrokOAuth:              grokOAuthHandler,
 		CNProvider:             cnProviderHandler,
 		Proxy:                  proxyHandler,
@@ -101,6 +103,7 @@ func ProvideGatewayHandler(
 	openAIGatewayService *service.OpenAIGatewayService,
 	geminiCompatService *service.GeminiMessagesCompatService,
 	antigravityGatewayService *service.AntigravityGatewayService,
+	geminiAppGatewayService *service.GeminiAppGatewayService,
 	userService *service.UserService,
 	concurrencyService *service.ConcurrencyService,
 	billingCacheService *service.BillingCacheService,
@@ -120,6 +123,7 @@ func ProvideGatewayHandler(
 		errorPassthroughService, contentModerationService, userMsgQueueService, cfg, settingService)
 	h.securityAuditCoordinator = coordinator
 	h.geminiCachedContentService = geminiCachedContentService
+	h.geminiAppGatewayService = geminiAppGatewayService
 	return h
 }
 
@@ -270,6 +274,7 @@ var ProviderSet = wire.NewSet(
 	admin.NewOpenAIOAuthHandler,
 	admin.NewGeminiOAuthHandler,
 	admin.NewAntigravityOAuthHandler,
+	admin.NewGeminiAppOAuthHandler,
 	admin.NewGrokOAuthHandler,
 	admin.NewCNProviderHandler,
 	admin.NewProxyHandler,

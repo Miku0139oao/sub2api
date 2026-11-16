@@ -475,6 +475,8 @@ type OpenAIGatewayService struct {
 	userPlatformQuotaRepo UserPlatformQuotaRepository
 	liveAttestation       liveattestation.Provider
 	liveAttestationCipher SecretEncryptor
+	// geminiAppGatewayService 处理 Gemini App 原生协议账号；nil 时该平台不可用。
+	geminiAppGatewayService *GeminiAppGatewayService
 
 	openaiWSPoolOnce               sync.Once
 	openaiWSStateStoreOnce         sync.Once
@@ -513,6 +515,13 @@ type OpenAIGatewayService struct {
 	// 剥离跨账号回带（openai_codex_turn_state.go）。
 	openaiCodexTurnStateOrigins sync.Map
 	openaiCodexTurnStateWrites  atomic.Uint64
+}
+
+// SetGeminiAppGatewayService 注入 Gemini App 原生协议 gateway。
+func (s *OpenAIGatewayService) SetGeminiAppGatewayService(svc *GeminiAppGatewayService) {
+	if s != nil {
+		s.geminiAppGatewayService = svc
+	}
 }
 
 // NewOpenAIGatewayService creates a new OpenAIGatewayService

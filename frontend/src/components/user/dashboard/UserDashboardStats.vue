@@ -255,6 +255,7 @@ const PLATFORM_LABELS: Record<string, string> = {
   gemini: 'Gemini',
   antigravity: 'Antigravity',
   grok: 'Grok',
+  gemini_app: 'Gemini App',
   kimi: 'Kimi',
   zhipu: 'Zhipu GLM',
   deepseek: 'DeepSeek',

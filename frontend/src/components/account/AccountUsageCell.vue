@@ -657,6 +657,36 @@
       </div>
     </template>
 
+    <!-- Gemini App: no upstream quota API, show local 24h usage only -->
+    <template v-else-if="account.platform === 'gemini_app'">
+      <div v-if="loading && !usageInfo" class="flex items-center gap-1">
+        <div class="h-3 w-10 animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>
+        <div class="h-3 w-8 animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>
+        <div class="h-3 w-12 animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>
+      </div>
+      <div v-else-if="error" class="text-xs text-red-500">{{ error }}</div>
+      <div v-else-if="geminiAppLocalUsage" class="space-y-0.5">
+        <div class="flex items-center gap-1.5 text-[9px] text-gray-500 dark:text-gray-400">
+          <span class="rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800">
+            {{ geminiAppRequests }} req
+          </span>
+          <span class="rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800">
+            {{ geminiAppTokens }}
+          </span>
+          <span class="rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800" :title="t('usage.accountBilled')">
+            A ${{ geminiAppCost }}
+          </span>
+        </div>
+        <div
+          class="text-[9px] italic text-gray-400 dark:text-gray-500"
+          :title="t('admin.accounts.usageWindow.geminiAppLocalOnlyHint')"
+        >
+          {{ t('admin.accounts.usageWindow.geminiAppLocalOnly') }}
+        </div>
+      </div>
+      <div v-else class="text-xs text-gray-400">-</div>
+    </template>
+
     <!-- Other accounts: no usage window -->
     <template v-else>
       <div class="text-xs text-gray-400">-</div>
@@ -867,6 +897,9 @@ const shouldFetchUsage = computed(() => {
   if (props.account.platform === 'openai') {
     return props.account.type === 'oauth'
   }
+  if (props.account.platform === 'gemini_app') {
+    return props.account.type === 'oauth'
+  }
   return false
 })
 
@@ -876,6 +909,14 @@ const cnQuotaCellVisible = computed(() => cnQuotaCellVisibleFn(props.account))
 const cnBalanceCellVisible = computed(() => cnBalanceCellVisibleFn(props.account))
 
 const isBatchManaged = computed(() => typeof props.requestBatchedUsage === 'function')
+
+// Gemini App: 上游没有配额接口，只展示本地 24 小时用量
+const geminiAppLocalUsage = computed(() => usageInfo.value?.gemini_app_local_usage ?? null)
+const geminiAppRequests = computed(() =>
+  formatCompactNumber(geminiAppLocalUsage.value?.requests ?? 0, { allowBillions: false })
+)
+const geminiAppTokens = computed(() => formatCompactNumber(geminiAppLocalUsage.value?.tokens ?? 0))
+const geminiAppCost = computed(() => (geminiAppLocalUsage.value?.cost ?? 0).toFixed(2))
 
 // Vertex 没有本地模拟配额，用量窗口展示今日统计
 const showGeminiTodayStats = computed(() => {

@@ -37,7 +37,11 @@ const (
 	PlatformCommandCode = "command_code"
 	// PlatformCline 是 Cline API（多模型聚合，OpenAI 兼容 Chat Completions；按量积分计费，
 	// 另有 ClinePass 订阅）。
-	PlatformCline     = "cline"
+	PlatformCline = "cline"
+	// PlatformGeminiApp 是 Google Gemini App 原生客户端协议（HTTP/2 ProcessQuery，
+	// Google OAuth 账号，模型别名 gemini-argon / gemini-hydrogen / gemini-flash-lite）。
+	// 由 OpenAI 网关族转发：上游只有 Chat Completions / Responses 形态。
+	PlatformGeminiApp = "gemini_app"
 	PlatformComposite = "composite"
 )
 

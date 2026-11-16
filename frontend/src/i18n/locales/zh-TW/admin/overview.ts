@@ -981,6 +981,7 @@ export default {
         minimax: 'MiniMax',
         opencode_go: 'OpenCode',
         typesafe: 'TypeSafe / Jev',
+        gemini_app: 'Gemini App',
         composite: 'Composite',
       },
       saving: '儲存中...',

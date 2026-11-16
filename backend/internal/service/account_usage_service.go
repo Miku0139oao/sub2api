@@ -234,6 +234,9 @@ type UsageInfo struct {
 	ThirtyDay   *UsageProgress      `json:"thirty_day,omitempty"`
 	GrokBilling *xai.BillingSummary `json:"grok_billing,omitempty"`
 
+	// Gemini App 没有上游配额接口，只能展示本地用量统计（最近 24 小时）。
+	GeminiAppLocalUsage *WindowStats `json:"gemini_app_local_usage,omitempty"`
+
 	// Antigravity 账号级信息
 	SubscriptionTier    string `json:"subscription_tier,omitempty"`     // 归一化订阅等级: FREE/PRO/ULTRA/UNKNOWN
 	SubscriptionTierRaw string `json:"subscription_tier_raw,omitempty"` // 上游原始订阅等级名称
@@ -409,6 +412,12 @@ func (s *AccountUsageService) getUsageForAccount(ctx context.Context, account *A
 			s.tryClearRecoverableAccountError(ctx, account)
 		}
 		return usage, err
+	}
+
+	// Gemini App 上游没有配额/用量查询接口：绝不能拿 Google 的 token 去请求
+	// Anthropic 的 usage API（会 401 并留下误导性错误），只回报本地统计。
+	if account.Platform == PlatformGeminiApp {
+		return s.getGeminiAppUsage(ctx, account)
 	}
 
 	// 只有oauth类型账号可以通过API获取usage（有profile scope）
@@ -1088,6 +1097,37 @@ func (s *AccountUsageService) getGeminiUsage(ctx context.Context, account *Accou
 		usage.GeminiFlashMinute = buildGeminiUsageProgress(minuteTotals.FlashRequests, quota.FlashRPM, minuteResetAt, minuteTotals.FlashTokens, minuteTotals.FlashCost, now)
 	}
 
+	return usage, nil
+}
+
+// geminiAppLocalUsageWindow 是 Gemini App 本地用量展示窗口。
+const geminiAppLocalUsageWindow = 24 * time.Hour
+
+// getGeminiAppUsage 返回 Gemini App 账号的本地用量统计。
+// 上游 robin ProcessQuery 没有配额查询接口，唯一可靠的数据源是本地
+// usage_logs；这里不发起任何上游请求。
+func (s *AccountUsageService) getGeminiAppUsage(ctx context.Context, account *Account) (*UsageInfo, error) {
+	now := time.Now()
+	usage := &UsageInfo{
+		Source:    "local",
+		UpdatedAt: &now,
+	}
+	if s.usageLogRepo == nil {
+		return usage, nil
+	}
+	stats, err := s.usageLogRepo.GetAccountWindowStats(ctx, account.ID, now.Add(-geminiAppLocalUsageWindow))
+	if err != nil {
+		return nil, fmt.Errorf("get gemini app local usage failed: %w", err)
+	}
+	if stats != nil {
+		usage.GeminiAppLocalUsage = &WindowStats{
+			Requests:     stats.Requests,
+			Tokens:       stats.Tokens,
+			Cost:         stats.Cost,
+			StandardCost: stats.StandardCost,
+			UserCost:     stats.UserCost,
+		}
+	}
 	return usage, nil
 }
 

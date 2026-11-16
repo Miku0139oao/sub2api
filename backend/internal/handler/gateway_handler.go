@@ -19,6 +19,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/pkg/claude"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/ctxkey"
 	pkgerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/geminiapp"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/geminicli"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/ip"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
@@ -54,12 +55,14 @@ type GatewayHandler struct {
 	securityAuditCoordinator  *securityaudit.Coordinator
 	// geminiCachedContentService 管理 Gemini 显式缓存；为 nil 时相关接口不可用。
 	geminiCachedContentService *service.GeminiCachedContentService
-	concurrencyHelper          *ConcurrencyHelper
-	userMsgQueueHelper         *UserMsgQueueHelper
-	maxAccountSwitches         int
-	maxAccountSwitchesGemini   int
-	cfg                        *config.Config
-	settingService             *service.SettingService
+	// geminiAppGatewayService 转发 Gemini App 原生协议账号；为 nil 时该平台不可用。
+	geminiAppGatewayService  *service.GeminiAppGatewayService
+	concurrencyHelper        *ConcurrencyHelper
+	userMsgQueueHelper       *UserMsgQueueHelper
+	maxAccountSwitches       int
+	maxAccountSwitchesGemini int
+	cfg                      *config.Config
+	settingService           *service.SettingService
 }
 
 // NewGatewayHandler creates a new GatewayHandler
@@ -1231,6 +1234,10 @@ func (h *GatewayHandler) Models(c *gin.Context) {
 		writeModelsListResponse(c, geminicli.DefaultModels)
 		return
 	}
+	if platform == service.PlatformGeminiApp {
+		writeModelsList(c, platform, geminiapp.NativeModels)
+		return
+	}
 	if platform == service.PlatformGrok {
 		writeGrokModelsList(c, xai.DefaultModelIDs())
 		return
@@ -1513,6 +1520,8 @@ func defaultModelIDsForPlatform(platform string) []string {
 			ids = append(ids, model.ID)
 		}
 		return ids
+	case service.PlatformGeminiApp:
+		return append([]string{}, geminiapp.NativeModels...)
 	case service.PlatformAntigravity:
 		models := antigravity.DefaultModels()
 		ids := make([]string, 0, len(models))

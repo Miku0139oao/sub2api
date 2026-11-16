@@ -819,6 +819,30 @@ Antigravity 账户支持可选的**混合调度**功能。开启后，通用端�
 
 ---
 
+## Gemini App 使用说明
+
+Sub2API 可以使用 Google 账号登录 Gemini App，并通过 OpenAI 兼容端点提供服务。网关直接对接原生 `ProcessQuery` RPC，不依赖任何外部桥接服务。
+
+### 端点
+
+| 端点 | 用途 |
+|------|------|
+| `POST /v1/chat/completions`、`POST /gemini-app/v1/chat/completions` | Chat Completions |
+| `POST /v1/responses`、`POST /gemini-app/v1/responses` | Responses |
+| `GET /v1/models`、`GET /gemini-app/v1/models` | 原生模型列表 |
+
+原生模型：`gemini-argon`（Ultra 档，默认）、`gemini-hydrogen`（FAST 档）、`gemini-flash-lite`（Flash Lite 档）。`reasoning_effort` / `thinking_level` 会映射到原生 0/1/2/4 等级；Deep Think（异步等级 3）会被拒绝。
+
+### 账号配置
+
+1. 通过 `GEMINI_APP_OAUTH_PROFILE` 或 `GEMINI_APP_OAUTH_PROFILE_FILE` 注入 Gemini App 的 Google OAuth client profile。
+2. 在管理端生成授权链接，完成 Google 登录后，把浏览器里 loopback 回调地址（或其中的 `code`）粘贴回对话框。
+3. 也可以在新建账号时直接粘贴已有的 Refresh Token。
+
+该平台不支持 Anthropic Messages（`/v1/messages`），也不接受图片输入。上游没有配额接口，账号用量页显示本地最近 24 小时的用量。完整说明见 [Gemini App](docs/GEMINI_APP.md)。
+
+---
+
 ## 项目结构
 
 ```

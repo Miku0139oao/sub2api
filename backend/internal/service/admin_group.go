@@ -14,6 +14,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/pkg/antigravity"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/claude"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/geminiapp"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/geminicli"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
@@ -331,6 +332,8 @@ func defaultModelsListCandidateIDs(platform string) []string {
 		return ids
 	case PlatformGrok:
 		return xai.DefaultModelIDs()
+	case PlatformGeminiApp:
+		return append([]string{}, geminiapp.NativeModels...)
 	case PlatformOpenCodeGo:
 		return DefaultOpenCodeGoModelIDs()
 	case PlatformTypeSafe:
@@ -410,6 +413,7 @@ func groupSupportsOAuthOnlyFilter(platform string) bool {
 		platform == PlatformAntigravity ||
 		platform == PlatformAnthropic ||
 		platform == PlatformGemini ||
+		platform == PlatformGeminiApp ||
 		platform == PlatformGrok ||
 		platform == PlatformComposite
 }

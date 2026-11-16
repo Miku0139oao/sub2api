@@ -414,6 +414,15 @@ func buildAccountForCreate(input *CreateAccountInput, accountExtra map[string]an
 	if input.Platform == PlatformTypeSafe && input.Type != AccountTypeAPIKey {
 		return nil, errors.New("typesafe accounts only support apikey credentials")
 	}
+	if input.Platform == PlatformGeminiApp {
+		if input.Type != AccountTypeOAuth {
+			return nil, errors.New("gemini_app accounts only support oauth credentials")
+		}
+		refreshToken, _ := input.Credentials["refresh_token"].(string)
+		if strings.TrimSpace(refreshToken) == "" {
+			return nil, errors.New("gemini_app accounts require a refresh_token")
+		}
+	}
 	// Probe/session state is system-managed. New accounts always start with automatic refresh disabled.
 	delete(accountExtra, UpstreamBillingProbeEnabledExtraKey)
 	delete(accountExtra, UpstreamBillingRateSyncEnabledExtraKey)
@@ -662,6 +671,16 @@ func (s *adminServiceImpl) UpdateAccount(ctx context.Context, id int64, input *U
 		}
 		// Strip SSO/password residue that must never sit next to OAuth tokens.
 		account.Credentials = SanitizeStoredCredentials(account.Platform, account.Credentials)
+	}
+	// gemini_app 是 OAuth-only 平台：编辑、重新授权、批量修改都经过这里，
+	// 创建时的不变量必须在更新路径上同样成立，否则账号会被写成永远无法转发的形态。
+	if account.Platform == PlatformGeminiApp {
+		if account.Type != AccountTypeOAuth {
+			return nil, errors.New("gemini_app accounts only support oauth credentials")
+		}
+		if strings.TrimSpace(account.GetCredential("refresh_token")) == "" {
+			return nil, errors.New("gemini_app accounts require a refresh_token")
+		}
 	}
 	// Extra 使用 map：需要区分“未提供(nil)”与“显式清空({})”。
 	// 关闭配额限制时前端会删除 quota_* 键并提交 extra:{}，此时也必须落库。

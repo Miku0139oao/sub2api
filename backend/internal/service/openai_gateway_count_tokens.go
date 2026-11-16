@@ -150,7 +150,9 @@ func prepareNativeOpenAIInputTokensCountRequest(body []byte, account *Account) (
 }
 
 func shouldEstimateOpenAIInputTokensLocally(account *Account) bool {
-	if account == nil || account.IsGrok() || account.RoutesProtocolByInbound() || account.Type == AccountTypeUpstream {
+	// Grok 与 Gemini App 的原生上游都没有 OpenAI 的 input_tokens 端点；
+	// 转发只会常态 404，并且 Gemini App 的 OAuth 凭证也不是 OpenAI 令牌。
+	if account == nil || account.IsGrok() || account.Platform == PlatformGeminiApp || account.RoutesProtocolByInbound() || account.Type == AccountTypeUpstream {
 		return true
 	}
 	if account.Type != AccountTypeAPIKey {
@@ -265,20 +267,24 @@ func (s *OpenAIGatewayService) ForwardCountTokensAsAnthropic(
 	}
 
 	// 多协议 API Key 供应商（国产厂商与聚合平台，全部协议，含 anthropic）：一律本地估算，不发上游请求。
+	// Gemini App 的原生 ProcessQuery 协议同样没有 count_tokens 端点，凭证也不是 OpenAI 令牌，
+	// 因此必须在这里本地估算，否则会走到 GetAccessToken 的 OpenAI 分支并返回 502。
+	//
 	// 依据（2026-08 核实）：三家的 Anthropic 兼容层均未提供
 	// /v1/messages/count_tokens——DeepSeek 官方 anthropic_api 文档无此端点
 	// （且注明 anthropic-version 头被忽略），聚合网关 OpenModel 明确标注
 	// count_tokens 为 "Anthropic only"，Kimi/智谱亦无任何文档承诺。转发上游
 	// 只会常态 404，且错误还会流入账号处置逻辑误伤整账号调度；Claude Code
 	// 高频调用此端点，本地 tiktoken 估算是与 Grok 一致的既有方案。
-	if account.IsMultiProtocolAPIKey() {
+	if account.IsMultiProtocolAPIKey() || account.Platform == PlatformGeminiApp {
 		estimated, err := estimateAnthropicCountTokensLocally(body)
 		if err != nil {
 			writeAnthropicCountTokensError(c, http.StatusBadRequest, "invalid_request_error", "Failed to parse request body")
 			return fmt.Errorf("count_tokens: estimate cn provider input tokens: %w", err)
 		}
-		logger.L().Debug("openai count_tokens: cn provider local estimate",
+		logger.L().Debug("openai count_tokens: local estimate",
 			zap.Int64("account_id", account.ID),
+			zap.String("platform", account.Platform),
 			zap.Int("estimated_input_tokens", estimated),
 		)
 		c.JSON(http.StatusOK, gin.H{

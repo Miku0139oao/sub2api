@@ -18,6 +18,7 @@ Composite groups can route to these concrete account platforms:
 - Zhipu GLM
 - DeepSeek
 - MiniMax
+- Gemini App (OpenAI-compatible endpoints)
 
 The selected concrete platform is used for account selection, user platform
 quota checks, post-usage billing, ops error platform attribution, channel
@@ -194,7 +195,7 @@ skipped; when none remain the chain counts as exhausted and the original error
 is returned.
 
 This matters in practice because `opencode_go`, `command_code`, `deepseek`,
-`kimi`, `zhipu`, `minimax`, `grok` and `openai` all share the OpenAI gateway,
+`kimi`, `zhipu`, `minimax`, `grok`, `gemini_app` and `openai` all share the OpenAI gateway,
 so chains between them work. A chain that mixes `openai` and `anthropic` will
 only ever use the candidates of the family the request entered through.
 

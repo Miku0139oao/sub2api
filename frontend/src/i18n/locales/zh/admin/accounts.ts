@@ -512,6 +512,9 @@ export default {
         }
       },
       usageWindow: {
+        geminiAppLocalOnly: '24小时本地',
+        geminiAppLocalOnlyHint:
+          'Gemini App 上游没有配额查询接口，这里只显示本地记录的最近 24 小时请求数、Token 与计费金额。',
         statsTitle: '5小时窗口用量统计',
         statsTitleDaily: '每日用量统计',
         geminiProDaily: 'Pro',
@@ -1573,6 +1576,21 @@ export default {
           validateAndCreate: '验证并创建账号',
           pleaseEnterRefreshToken: '请输入 Refresh Token',
           failedToValidateRT: '验证 Refresh Token 失败'
+        },
+        geminiApp: {
+          title: 'Gemini App 账号授权',
+          onlyOAuthTitle: '仅支持 OAuth 账号',
+          onlyOAuthDesc:
+            'Gemini App 账号通过 Google 账号 OAuth 登录。完成 Google 登录后浏览器会提示 localhost 无法连接：请复制完整地址（或其中的 code 参数）粘贴到下方。',
+          redirectUriLabel: '授权回调地址：',
+          failedToGenerateUrl: '生成 Gemini App 授权链接失败',
+          missingExchangeParams: '缺少 code、session ID 或 state',
+          failedToExchangeCode: 'Gemini App 授权码兑换失败',
+          refreshTokenAuth: '手动 RT',
+          refreshTokenDesc: '输入已有的 Gemini App Refresh Token，系统将自动验证并创建账号。',
+          refreshTokenPlaceholder: '粘贴您的 Gemini App Refresh Token...',
+          pleaseEnterRefreshToken: '请输入 Refresh Token',
+          failedToValidateRT: '验证 Refresh Token 失败'
         }
       },
       // Gemini specific (platform-wide)
@@ -1724,6 +1742,7 @@ export default {
       claudeCodeAccount: 'Claude Code 账号',
       openaiAccount: 'OpenAI 账号',
       geminiAccount: 'Gemini 账号',
+      geminiAppAccount: 'Gemini App 账号',
       antigravityAccount: 'Antigravity 账号',
       grokAccount: 'Grok 账号',
       inputMethod: '输入方式',

@@ -23,6 +23,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/pkg/antigravity"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/claude"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/geminiapp"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/geminicli"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
@@ -54,6 +55,7 @@ type AccountHandler struct {
 	oauthService            *service.OAuthService
 	openaiOAuthService      *service.OpenAIOAuthService
 	geminiOAuthService      *service.GeminiOAuthService
+	geminiAppOAuthService   *service.GeminiAppOAuthService
 	antigravityOAuthService *service.AntigravityOAuthService
 	grokOAuthService        service.GrokOAuthTokenService
 	rateLimitService        *service.RateLimitService
@@ -1490,6 +1492,24 @@ func (h *AccountHandler) refreshSingleAccount(ctx context.Context, account *serv
 				return nil, "", fmt.Errorf("failed to clear account error: %w", clearErr)
 			}
 		}
+	} else if account.Platform == service.PlatformGeminiApp {
+		if h.geminiAppOAuthService == nil {
+			return nil, "", fmt.Errorf("gemini app oauth service is not configured")
+		}
+		refreshToken := strings.TrimSpace(account.GetCredential("refresh_token"))
+		if refreshToken == "" {
+			return nil, "", fmt.Errorf("gemini app account is missing a refresh_token")
+		}
+		var proxyURL string
+		if account.ProxyID != nil {
+			proxyURL = h.geminiAppOAuthService.ProxyURLForID(ctx, *account.ProxyID)
+		}
+		tokenInfo, err := h.geminiAppOAuthService.RefreshToken(ctx, refreshToken, proxyURL)
+		if err != nil {
+			return nil, "", fmt.Errorf("failed to refresh Gemini App credentials: %w", err)
+		}
+		// MergeCredentials keeps the old refresh_token when Google omits it.
+		newCredentials = service.MergeCredentials(account.Credentials, h.geminiAppOAuthService.BuildAccountCredentials(tokenInfo))
 	} else if account.Platform == service.PlatformGrok {
 		if h.grokOAuthService == nil {
 			return nil, "", fmt.Errorf("grok oauth service is not configured")
@@ -2904,6 +2924,17 @@ func (h *AccountHandler) respondAvailableModels(c *gin.Context, account *service
 					CreatedAt:   "",
 				})
 			}
+		}
+		response.Success(c, models)
+		return
+	}
+
+	// Gemini App serves only its native aliases; never advertise Claude/Gemini
+	// models the ProcessQuery upstream cannot answer.
+	if account.Platform == service.PlatformGeminiApp {
+		models := make([]openai.Model, 0, len(geminiapp.NativeModels))
+		for _, id := range geminiapp.NativeModels {
+			models = append(models, openai.Model{ID: id, Object: "model", Type: "model", DisplayName: id})
 		}
 		response.Success(c, models)
 		return

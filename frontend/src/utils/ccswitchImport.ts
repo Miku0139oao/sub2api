@@ -3,6 +3,7 @@ import { buildCodexApiKeyAuthConfig } from '@/utils/codexAuthConfig'
 
 export const OPENAI_CC_SWITCH_CODEX_MODEL = 'gpt-6.1-sol'
 export const GROK_CC_SWITCH_MODEL = 'grok-4.5'
+export const GEMINI_APP_CC_SWITCH_MODEL = 'gemini-argon'
 
 export type CcSwitchClientType = 'claude' | 'gemini'
 
@@ -78,6 +79,14 @@ export function resolveCcSwitchImportConfig(
       return {
         app: 'gemini',
         endpoint: baseUrl
+      }
+    // Gemini App serves OpenAI-shaped endpoints only, so it imports as a Codex
+    // provider with the platform's default native alias.
+    case 'gemini_app':
+      return {
+        app: 'codex',
+        endpoint: withoutTrailingSlashes(baseUrl),
+        model: GEMINI_APP_CC_SWITCH_MODEL
       }
     case 'grok':
       return {

@@ -201,6 +201,7 @@ func ProvideAccountHandler(
 	openaiOAuthService *service.OpenAIOAuthService,
 	geminiOAuthService *service.GeminiOAuthService,
 	antigravityOAuthService *service.AntigravityOAuthService,
+	geminiAppOAuthService *service.GeminiAppOAuthService,
 	grokOAuthService service.GrokOAuthTokenService,
 	rateLimitService *service.RateLimitService,
 	accountUsageService *service.AccountUsageService,
@@ -228,6 +229,7 @@ func ProvideAccountHandler(
 		rpmCache,
 		tokenCacheInvalidator,
 	)
+	handler.geminiAppOAuthService = geminiAppOAuthService
 	handler.grokImportProber = grokQuotaService
 	handler.cfg = cfg
 	return handler

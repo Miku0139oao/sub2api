@@ -2093,3 +2093,51 @@ describe('EditAccountModal temp-unschedulable rule scope', () => {
     wrapper.unmount()
   })
 })
+
+describe('EditAccountModal Gemini App model restriction', () => {
+  function buildGeminiAppOAuthAccount() {
+    return {
+      ...buildAccount(),
+      id: 8,
+      name: 'Gemini App OAuth',
+      platform: 'gemini_app',
+      type: 'oauth',
+      credentials: {
+        access_token: 'gemini-access-token',
+        refresh_token: 'gemini-refresh-token',
+        model_mapping: { 'gemini-local': 'gemini-argon' }
+      },
+      extra: {}
+    } as any
+  }
+
+  it('renders the model restriction section and loads the saved mapping', async () => {
+    const wrapper = mountModal(buildGeminiAppOAuthAccount())
+
+    expect(wrapper.text()).toContain('admin.accounts.modelRestriction')
+    const mappingButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('admin.accounts.modelMapping'))
+    expect(mappingButton).toBeTruthy()
+    await mappingButton!.trigger('click')
+
+    const from = wrapper.get('input[placeholder="admin.accounts.requestModel"]')
+    const to = wrapper.get('input[placeholder="admin.accounts.actualModel"]')
+    expect((from.element as HTMLInputElement).value).toBe('gemini-local')
+    expect((to.element as HTMLInputElement).value).toBe('gemini-argon')
+    wrapper.unmount()
+  })
+
+  it('keeps the saved mapping on submit', async () => {
+    const account = buildGeminiAppOAuthAccount()
+    updateAccountMock.mockResolvedValue(account)
+    const wrapper = mountModal(account)
+
+    await wrapper.get('form#edit-account-form').trigger('submit.prevent')
+    await vi.waitFor(() => expect(updateAccountMock).toHaveBeenCalledTimes(1))
+
+    const payload = updateAccountMock.mock.calls[0]?.[1]
+    expect(payload?.credentials?.model_mapping).toEqual({ 'gemini-local': 'gemini-argon' })
+    wrapper.unmount()
+  })
+})

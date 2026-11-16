@@ -136,6 +136,19 @@
           </button>
           <button
             type="button"
+            @click="form.platform = 'gemini_app'"
+            :class="[
+              'flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-medium transition-all',
+              form.platform === 'gemini_app'
+                ? 'bg-white text-lime-700 shadow-sm dark:bg-dark-600 dark:text-lime-300'
+                : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
+            ]"
+          >
+            <PlatformIcon platform="gemini_app" size="sm" />
+            Gemini App
+          </button>
+          <button
+            type="button"
             @click="form.platform = 'antigravity'"
             :class="[
               'flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-medium transition-all',
@@ -1102,6 +1115,20 @@
           </div>
           <p class="input-hint">{{ t('admin.accounts.gemini.tier.hint') }}</p>
         </div>
+      </div>
+
+      <!-- Gemini App：仅支持 Google OAuth；登录后需把回调地址/code 粘贴回来 -->
+      <div
+        v-if="form.platform === 'gemini_app'"
+        class="rounded-lg border border-lime-200 bg-lime-50 p-3 text-xs text-lime-800 dark:border-lime-700/50 dark:bg-lime-900/20 dark:text-lime-200"
+        data-testid="gemini-app-oauth-hint"
+      >
+        <p class="font-medium">{{ t('admin.accounts.oauth.geminiApp.onlyOAuthTitle') }}</p>
+        <p class="mt-1">{{ t('admin.accounts.oauth.geminiApp.onlyOAuthDesc') }}</p>
+        <p v-if="geminiAppOAuth.redirectUri.value" class="mt-1 font-mono">
+          {{ t('admin.accounts.oauth.geminiApp.redirectUriLabel') }}
+          {{ geminiAppOAuth.redirectUri.value }}
+        </p>
       </div>
 
       <!-- Account Type Selection (Antigravity - OAuth or Upstream) -->
@@ -2484,9 +2511,9 @@
         </div>
       </div>
 
-      <!-- OpenAI OAuth Model Mapping (OAuth 类型没有 apikey 容器，需要独立的模型映射区域) -->
+      <!-- OpenAI/Grok/Gemini App OAuth Model Mapping (OAuth 类型没有 apikey 容器，需要独立的模型映射区域) -->
       <div
-        v-if="(form.platform === 'openai' || form.platform === 'grok') && isOAuthFlow"
+        v-if="(form.platform === 'openai' || form.platform === 'grok' || form.platform === 'gemini_app') && isOAuthFlow"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
         <label class="input-label">{{ t('admin.accounts.modelRestriction') }}</label>
@@ -3781,7 +3808,7 @@
         :show-proxy-warning="form.platform !== 'openai' && form.platform !== 'grok' && !!form.proxy_id"
         :allow-multiple="form.platform === 'anthropic'"
         :show-cookie-option="form.platform === 'anthropic'"
-        :show-refresh-token-option="form.platform === 'openai' || form.platform === 'antigravity' || form.platform === 'grok'"
+        :show-refresh-token-option="form.platform === 'openai' || form.platform === 'antigravity' || form.platform === 'grok' || form.platform === 'gemini_app'"
         :show-mobile-refresh-token-option="form.platform === 'openai'"
         :show-session-token-option="false"
         :show-access-token-option="false"
@@ -4144,6 +4171,7 @@ import {
 import { useOpenAIOAuth } from '@/composables/useOpenAIOAuth'
 import { useGeminiOAuth } from '@/composables/useGeminiOAuth'
 import { useAntigravityOAuth } from '@/composables/useAntigravityOAuth'
+import { useGeminiAppOAuth } from '@/composables/useGeminiAppOAuth'
 import { useGrokOAuth } from '@/composables/useGrokOAuth'
 import type {
   Proxy,
@@ -4255,6 +4283,7 @@ const oauthStepTitle = computed(() => {
   if (form.platform === 'openai') return t('admin.accounts.oauth.openai.title')
   if (form.platform === 'gemini') return t('admin.accounts.oauth.gemini.title')
   if (form.platform === 'antigravity') return t('admin.accounts.oauth.antigravity.title')
+  if (form.platform === 'gemini_app') return t('admin.accounts.oauth.geminiApp.title')
   if (form.platform === 'grok') return t('admin.accounts.oauth.grok.title')
   return t('admin.accounts.oauth.title')
 })
@@ -4350,6 +4379,7 @@ const oauth = useAccountOAuth() // For Anthropic OAuth
 const openaiOAuth = useOpenAIOAuth() // For OpenAI OAuth
 const geminiOAuth = useGeminiOAuth() // For Gemini OAuth
 const antigravityOAuth = useAntigravityOAuth() // For Antigravity OAuth
+const geminiAppOAuth = useGeminiAppOAuth() // For Gemini App OAuth
 const grokOAuth = useGrokOAuth() // For Grok OAuth
 
 // Computed: current OAuth state for template binding
@@ -4357,6 +4387,7 @@ const currentAuthUrl = computed(() => {
   if (form.platform === 'openai') return openaiOAuth.authUrl.value
   if (form.platform === 'gemini') return geminiOAuth.authUrl.value
   if (form.platform === 'antigravity') return antigravityOAuth.authUrl.value
+  if (form.platform === 'gemini_app') return geminiAppOAuth.authUrl.value
   if (form.platform === 'grok') return grokOAuth.authUrl.value
   return oauth.authUrl.value
 })
@@ -4365,6 +4396,7 @@ const currentSessionId = computed(() => {
   if (form.platform === 'openai') return openaiOAuth.sessionId.value
   if (form.platform === 'gemini') return geminiOAuth.sessionId.value
   if (form.platform === 'antigravity') return antigravityOAuth.sessionId.value
+  if (form.platform === 'gemini_app') return geminiAppOAuth.sessionId.value
   if (form.platform === 'grok') return grokOAuth.sessionId.value
   return oauth.sessionId.value
 })
@@ -4373,6 +4405,7 @@ const currentOAuthLoading = computed(() => {
   if (form.platform === 'openai') return openaiOAuth.loading.value
   if (form.platform === 'gemini') return geminiOAuth.loading.value
   if (form.platform === 'antigravity') return antigravityOAuth.loading.value
+  if (form.platform === 'gemini_app') return geminiAppOAuth.loading.value
   if (form.platform === 'grok') return grokOAuth.loading.value
   return oauth.loading.value
 })
@@ -4381,6 +4414,7 @@ const currentOAuthError = computed(() => {
   if (form.platform === 'openai') return openaiOAuth.error.value
   if (form.platform === 'gemini') return geminiOAuth.error.value
   if (form.platform === 'antigravity') return antigravityOAuth.error.value
+  if (form.platform === 'gemini_app') return geminiAppOAuth.error.value
   if (form.platform === 'grok') return grokOAuth.error.value
   return oauth.error.value
 })
@@ -5081,6 +5115,9 @@ const canExchangeCode = computed(() => {
   if (form.platform === 'openai') {
     return authCode.trim() && openaiOAuth.sessionId.value && !openaiOAuth.loading.value
   }
+  if (form.platform === 'gemini_app') {
+    return authCode.trim() && geminiAppOAuth.sessionId.value && !geminiAppOAuth.loading.value
+  }
   if (form.platform === 'gemini') {
     return authCode.trim() && geminiOAuth.sessionId.value && !geminiOAuth.loading.value
   }
@@ -5193,6 +5230,12 @@ watch(
       antigravityModelMappings.value = []
       antigravityModelRestrictionMode.value = 'mapping'
     }
+    if (newPlatform === 'gemini_app') {
+      accountCategory.value = 'oauth-based'
+      addMethod.value = 'oauth'
+      form.type = 'oauth'
+      geminiAppOAuth.resetState()
+    }
     if (newPlatform === 'grok') {
       accountCategory.value = 'oauth-based'
       addMethod.value = 'oauth'
@@ -5252,6 +5295,7 @@ watch(
 
     geminiOAuth.resetState()
     antigravityOAuth.resetState()
+    geminiAppOAuth.resetState()
     grokOAuth.resetState()
   }
 )
@@ -5740,6 +5784,7 @@ const resetForm = () => {
   openaiOAuth.resetState()
   geminiOAuth.resetState()
   antigravityOAuth.resetState()
+  geminiAppOAuth.resetState()
   grokOAuth.resetState()
   oauthFlowRef.value?.reset()
   antigravityMixedChannelConfirmed.value = false
@@ -6268,6 +6313,8 @@ const handleGenerateUrl = async () => {
     )
   } else if (form.platform === 'antigravity') {
     await antigravityOAuth.generateAuthUrl(form.proxy_id)
+  } else if (form.platform === 'gemini_app') {
+    await geminiAppOAuth.generateAuthUrl(form.proxy_id)
   } else if (form.platform === 'grok') {
     await grokOAuth.generateAuthUrl(form.proxy_id)
   } else {
@@ -6280,6 +6327,8 @@ const handleValidateRefreshToken = (rt: string) => {
     handleOpenAIValidateRT(rt)
   } else if (form.platform === 'antigravity') {
     handleAntigravityValidateRT(rt)
+  } else if (form.platform === 'gemini_app') {
+    handleGeminiAppValidateRT(rt)
   } else if (form.platform === 'grok') {
     handleGrokValidateRT(rt)
   }
@@ -6345,8 +6394,8 @@ const createAccountAndFinish = async (
       delete credentials.compact_model_mapping
     }
   }
-  if (platform === 'grok') {
-    if (!credentials.base_url) {
+  if (platform === 'grok' || platform === 'gemini_app') {
+    if (platform === 'grok' && !credentials.base_url) {
       credentials.base_url = apiKeyBaseUrl.value.trim() || 'https://api.x.ai/v1'
     }
     const modelMapping = buildModelMappingObject(modelRestrictionMode.value, allowedModels.value, modelMappings.value)
@@ -7037,8 +7086,30 @@ const handleOpenAIValidateRT = (rt: string) => handleOpenAIBatchRT(rt)
 const handleOpenAIValidateMobileRT = (rt: string) => handleOpenAIBatchRT(rt, OPENAI_MOBILE_RT_CLIENT_ID)
 
 // Antigravity 手动 RT 批量验证和创建
-const handleAntigravityValidateRT = async (refreshTokenInput: string) => {
-  if (!refreshTokenInput.trim()) return
+// Gemini App refresh token 验证并直接创建账号
+const handleGeminiAppValidateRT = async (refreshTokenInput: string) => {
+  const refreshToken = refreshTokenInput.trim()
+  if (!refreshToken) return
+
+  geminiAppOAuth.loading.value = true
+  geminiAppOAuth.error.value = ''
+
+  try {
+    const tokenInfo = await geminiAppOAuth.validateRefreshToken(refreshToken, form.proxy_id)
+    if (!tokenInfo) {
+      appStore.showError(
+        geminiAppOAuth.error.value || t('admin.accounts.oauth.geminiApp.failedToValidateRT')
+      )
+      return
+    }
+    const credentials = geminiAppOAuth.buildCredentials(tokenInfo, refreshToken)
+    await createAccountAndFinish('gemini_app', 'oauth', credentials)
+  } finally {
+    geminiAppOAuth.loading.value = false
+  }
+}
+
+const handleAntigravityValidateRT = async (refreshTokenInput: string) => {  if (!refreshTokenInput.trim()) return
 
   // Parse multiple refresh tokens (one per line)
   const refreshTokens = refreshTokenInput
@@ -7211,6 +7282,41 @@ const handleAntigravityExchange = async (authCode: string) => {
   }
 }
 
+// Gemini App OAuth 授权码兑换
+const handleGeminiAppExchange = async (authCode: string) => {
+  if (!authCode.trim() || !geminiAppOAuth.sessionId.value) return
+
+  geminiAppOAuth.loading.value = true
+  geminiAppOAuth.error.value = ''
+
+  try {
+    const stateFromInput = oauthFlowRef.value?.oauthState || ''
+    const stateToUse = stateFromInput || geminiAppOAuth.state.value
+    if (!stateToUse) {
+      geminiAppOAuth.error.value = t('admin.accounts.oauth.authFailed')
+      appStore.showError(geminiAppOAuth.error.value)
+      return
+    }
+
+    const tokenInfo = await geminiAppOAuth.exchangeAuthCode({
+      code: authCode.trim(),
+      sessionId: geminiAppOAuth.sessionId.value,
+      state: stateToUse,
+      proxyId: form.proxy_id
+    })
+    if (!tokenInfo) return
+
+    const credentials = geminiAppOAuth.buildCredentials(tokenInfo)
+    await createAccountAndFinish('gemini_app', 'oauth', credentials)
+  } catch (error: any) {
+    geminiAppOAuth.error.value =
+      error.response?.data?.detail || t('admin.accounts.oauth.authFailed')
+    appStore.showError(geminiAppOAuth.error.value)
+  } finally {
+    geminiAppOAuth.loading.value = false
+  }
+}
+
 // Grok OAuth 授权码兑换
 const handleGrokExchange = async (authCode: string) => {
   if (!authCode.trim() || !grokOAuth.sessionId.value) return
@@ -7350,6 +7456,8 @@ const handleExchangeCode = async () => {
       return handleAntigravityExchange(authCode)
     case 'grok':
       return handleGrokExchange(authCode)
+    case 'gemini_app':
+      return handleGeminiAppExchange(authCode)
     default:
       return handleAnthropicExchange(authCode)
   }

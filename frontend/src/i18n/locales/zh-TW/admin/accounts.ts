@@ -514,6 +514,9 @@ export default {
         }
       },
       usageWindow: {
+        geminiAppLocalOnly: '24小時本地',
+        geminiAppLocalOnlyHint:
+          'Gemini App 上游沒有配額查詢介面，這裡只顯示本地記錄的最近 24 小時請求數、Token 與計費金額。',
         statsTitle: '5小時視窗用量統計',
         statsTitleDaily: '每日用量統計',
         geminiProDaily: 'Pro',
@@ -521,6 +524,12 @@ export default {
         gemini3Pro: 'G3P',
         gemini3Flash: 'G3F',
         gemini3Image: 'G31FI',
+        antigravityGemini5h: 'G·5h',
+        antigravityGeminiWeekly: 'G·周',
+        antigravityArgon5h: 'A·5h',
+        antigravityArgonWeekly: 'A·周',
+        antigravityOther5h: 'C·5h',
+        antigravityOtherWeekly: 'C·周',
         claude: 'Claude',
         grokRequests: '請求',
         grokTokens: 'Token',
@@ -801,6 +810,10 @@ export default {
         imagesUrlToB64Json: '生圖結果 URL 轉 base64',
         imagesUrlToB64JsonDesc:
           '僅對 OpenAI API Key 的 Images 非流式回應生效。上游返回的圖片缺少 b64_json 但帶 url 時，閘道下載該 url 並以 base64 回填 b64_json（url 保留），相容按官方介面實作的用戶端；下載失敗則原樣返回。',
+        imageSizeTiers: '生圖尺寸檔位',
+        imageSizeTiersDesc:
+          '限制本帳號承接的生圖尺寸檔位，檔位與計費一致：最長邊 ≤1024 為 1K，≤2048 為 2K，更大為 4K（2560x1440 屬於 4K）。指定了尺寸的請求只會排程到允許該檔位的帳號；未傳尺寸或 auto 的請求優先排程到不限檔位的帳號，沒有時依次選允許 4K、2K、1K 的帳號。全選即不限，對 Images 介面與 Responses 生圖工具生效。',
+        imageSizeTiersAtLeastOne: '至少保留一個檔位',
         endpointCapabilities: '端點能力',
         endpointCapabilitiesDesc:
           '用於排程篩選。文本端點會跟隨上方 Responses API 支援顯示為 Responses、Chat Completions 或自動模式；Embeddings 獨立控制 /v1/embeddings。',
@@ -1565,6 +1578,21 @@ export default {
           validateAndCreate: '驗證並建立帳號',
           pleaseEnterRefreshToken: '請輸入 Refresh Token',
           failedToValidateRT: '驗證 Refresh Token 失敗'
+        },
+        geminiApp: {
+          title: 'Gemini App 帳號授權',
+          onlyOAuthTitle: '僅支援 OAuth 帳號',
+          onlyOAuthDesc:
+            'Gemini App 帳號通過 Google 帳號 OAuth 登入。完成 Google 登入後瀏覽器會提示 localhost 無法連線：請複製完整地址（或其中的 code 引數）貼上到下方。',
+          redirectUriLabel: '授權回呼地址：',
+          failedToGenerateUrl: '生成 Gemini App 授權連結失敗',
+          missingExchangeParams: '缺少 code、session ID 或 state',
+          failedToExchangeCode: 'Gemini App 授權碼兌換失敗',
+          refreshTokenAuth: '手動 RT',
+          refreshTokenDesc: '輸入已有的 Gemini App Refresh Token，系統將自動驗證並建立帳號。',
+          refreshTokenPlaceholder: '貼上您的 Gemini App Refresh Token...',
+          pleaseEnterRefreshToken: '請輸入 Refresh Token',
+          failedToValidateRT: '驗證 Refresh Token 失敗'
         }
       },
       // Gemini specific (platform-wide)
@@ -1716,6 +1744,7 @@ export default {
       claudeCodeAccount: 'Claude Code 帳號',
       openaiAccount: 'OpenAI 帳號',
       geminiAccount: 'Gemini 帳號',
+      geminiAppAccount: 'Gemini App 帳號',
       antigravityAccount: 'Antigravity 帳號',
       grokAccount: 'Grok 帳號',
       inputMethod: '輸入方式',

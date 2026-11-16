@@ -217,6 +217,7 @@ func scopedUsageDTO(u *service.UsageInfo, p adminaccess.Policy, a *service.Accou
 		out["grok_billing"] = &billing
 	}
 	if stats {
+		out["gemini_app_local_usage"] = u.GeminiAppLocalUsage
 		out["grok_local_usage"] = u.GrokLocalUsage
 		out["grok_local_usage_24h"] = u.GrokLocalUsage24h
 		out["grok_local_usage_7d"] = u.GrokLocalUsage7d

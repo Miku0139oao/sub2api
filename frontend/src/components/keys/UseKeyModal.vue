@@ -365,6 +365,8 @@ const defaultClientTab = computed(() => {
       return 'grok'
     case 'gemini':
       return 'gemini'
+    case 'gemini_app':
+      return 'codex'
     case 'antigravity':
       return 'claude'
     case 'typesafe':
@@ -482,6 +484,12 @@ const clientTabs = computed((): TabConfig[] => {
     case 'gemini':
       return [
         { id: 'gemini', label: t('keys.useKeyModal.cliTabs.geminiCli'), icon: SparkleIcon },
+        { id: 'codex', label: t('keys.useKeyModal.cliTabs.codexCli'), icon: TerminalIcon },
+        { id: 'opencode', label: t('keys.useKeyModal.cliTabs.opencode'), icon: TerminalIcon }
+      ]
+    // Gemini App 只有 OpenAI 形态的端点：不提供 Claude Code / Gemini CLI 标签。
+    case 'gemini_app':
+      return [
         { id: 'codex', label: t('keys.useKeyModal.cliTabs.codexCli'), icon: TerminalIcon },
         { id: 'opencode', label: t('keys.useKeyModal.cliTabs.opencode'), icon: TerminalIcon }
       ]
@@ -1319,6 +1327,7 @@ function generateRoutedCodexFiles(
     deepseek: 'deepseek-v4-pro',
     minimax: 'MiniMax-M3',
     opencode_go: 'glm-5.3',
+    gemini_app: 'gemini-argon',
     composite: 'gpt-6.1-sol'
   }
   const preferredModel = preferredModels[platform] || ''
@@ -1337,6 +1346,7 @@ function generateRoutedCodexFiles(
     typesafe: 'TypeSafe / Jev',
     command_code: 'Command Code',
     cline: 'Cline',
+    gemini_app: 'Gemini App',
     composite: 'Composite'
   }
   const label = labels[platform]

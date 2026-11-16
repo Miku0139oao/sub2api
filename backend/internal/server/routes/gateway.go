@@ -41,6 +41,7 @@ func RegisterGatewayRoutes(
 	// 未分组 Key 拦截中间件（按协议格式区分错误响应）
 	requireGroupAnthropic := middleware.RequireGroupAssignment(settingService, middleware.AnthropicErrorWriter)
 	requireGroupGoogle := middleware.RequireGroupAssignment(settingService, middleware.GoogleErrorWriter)
+	requireGroupOpenAI := middleware.RequireGroupAssignment(settingService, middleware.OpenAIErrorWriter)
 
 	// 分组级模型白名单准入：在 apiKeyAuth 之后、compositeTarget 之前，
 	// 保证校验发生在合成路由改写与调度之前，且只看客户端书写的模型名。
@@ -520,6 +521,22 @@ func RegisterGatewayRoutes(
 		antigravityV1Beta.GET("/models", h.Gateway.GeminiV1BetaListModels)
 		antigravityV1Beta.GET("/models/:model", h.Gateway.GeminiV1BetaGetModel)
 		antigravityV1Beta.POST("/models/*modelAction", h.Gateway.GeminiV1BetaModels)
+	}
+
+	// Gemini App 专用路由（仅使用 gemini_app 账户，走原生 ProcessQuery 协议）。
+	geminiAppV1 := r.Group("/gemini-app/v1")
+	geminiAppV1.Use(bodyLimit)
+	geminiAppV1.Use(clientRequestID)
+	geminiAppV1.Use(opsErrorLogger)
+	geminiAppV1.Use(endpointNorm)
+	geminiAppV1.Use(middleware.ForcePlatform(service.PlatformGeminiApp))
+	geminiAppV1.Use(gin.HandlerFunc(apiKeyAuth))
+	geminiAppV1.Use(groupModelAllowlist)
+	geminiAppV1.Use(requireGroupOpenAI)
+	{
+		geminiAppV1.POST("/chat/completions", h.OpenAIGateway.ChatCompletions)
+		geminiAppV1.POST("/responses", h.OpenAIGateway.Responses)
+		geminiAppV1.GET("/models", h.Gateway.Models)
 	}
 
 }

@@ -129,6 +129,7 @@ func ProvideTokenRefreshService(
 	openaiOAuthService *OpenAIOAuthService,
 	geminiOAuthService *GeminiOAuthService,
 	antigravityOAuthService *AntigravityOAuthService,
+	geminiAppOAuthService *GeminiAppOAuthService,
 	grokOAuthService *GrokOAuthService,
 	cacheInvalidator TokenCacheInvalidator,
 	schedulerCache SchedulerCache,
@@ -147,6 +148,7 @@ func ProvideTokenRefreshService(
 	// 调用侧显式注入后台刷新策略，避免策略漂移
 	svc.SetRefreshPolicy(DefaultBackgroundRefreshPolicy())
 	svc.SetAccountRuntimeBlocker(runtimeBlocker)
+	svc.RegisterGeminiAppRefresher(NewGeminiAppTokenRefresher(geminiAppOAuthService, proxyRepo))
 	svc.Start()
 	return svc
 }
@@ -262,6 +264,7 @@ func ProvideAccountTestService(
 	claudeTokenProvider *ClaudeTokenProvider,
 	grokTokenProvider *GrokTokenProvider,
 	antigravityGatewayService *AntigravityGatewayService,
+	geminiAppGatewayService *GeminiAppGatewayService,
 	httpUpstream HTTPUpstream,
 	cfg *config.Config,
 	tlsFPProfileService *TLSFingerprintProfileService,
@@ -281,6 +284,7 @@ func ProvideAccountTestService(
 	)
 	service.agentIdentityWS = openAIGatewayService
 	service.SetOpenAIGatewayService(openAIGatewayService)
+	service.SetGeminiAppGatewayService(geminiAppGatewayService)
 	service.SetSettingService(settingService)
 	service.SetPluginManager(pluginManager)
 	return service
@@ -367,6 +371,53 @@ func ProvideAntigravityTokenProvider(
 	p.SetRefreshPolicy(AntigravityProviderRefreshPolicy())
 	p.SetTempUnschedCache(tempUnschedCache)
 	return p
+}
+
+// ProvideOpenAIGatewayService creates OpenAIGatewayService and injects the
+// Gemini App native gateway so OpenAI-shaped routes can serve gemini_app groups.
+func ProvideOpenAIGatewayService(
+	accountRepo AccountRepository,
+	usageLogRepo UsageLogRepository,
+	usageBillingRepo UsageBillingRepository,
+	userRepo UserRepository,
+	userSubRepo UserSubscriptionRepository,
+	userGroupRateRepo UserGroupRateRepository,
+	cache GatewayCache,
+	cfg *config.Config,
+	schedulerSnapshot *SchedulerSnapshotService,
+	concurrencyService *ConcurrencyService,
+	billingService *BillingService,
+	rateLimitService *RateLimitService,
+	billingCacheService *BillingCacheService,
+	httpUpstream HTTPUpstream,
+	deferredService *DeferredService,
+	openAITokenProvider *OpenAITokenProvider,
+	grokTokenProvider *GrokTokenProvider,
+	resolver *ModelPricingResolver,
+	channelService *ChannelService,
+	balanceNotifyService *BalanceNotifyService,
+	settingService *SettingService,
+	userPlatformQuotaRepo UserPlatformQuotaRepository,
+	geminiAppGatewayService *GeminiAppGatewayService,
+) *OpenAIGatewayService {
+	svc := NewOpenAIGatewayService(
+		accountRepo, usageLogRepo, usageBillingRepo, userRepo, userSubRepo, userGroupRateRepo,
+		cache, cfg, schedulerSnapshot, concurrencyService, billingService, rateLimitService,
+		billingCacheService, httpUpstream, deferredService, openAITokenProvider, grokTokenProvider,
+		resolver, channelService, balanceNotifyService, settingService, userPlatformQuotaRepo,
+	)
+	svc.SetGeminiAppGatewayService(geminiAppGatewayService)
+	return svc
+}
+
+// ProvideGeminiAppTokenProvider creates GeminiAppTokenProvider.
+func ProvideGeminiAppTokenProvider(
+	accountRepo AccountRepository,
+	proxyRepo ProxyRepository,
+	tokenCache GeminiTokenCache,
+	oauthService *GeminiAppOAuthService,
+) *GeminiAppTokenProvider {
+	return NewGeminiAppTokenProvider(accountRepo, proxyRepo, tokenCache, oauthService)
 }
 
 // ProvideGrokTokenProvider creates GrokTokenProvider with OAuthRefreshAPI injection.
@@ -883,7 +934,7 @@ var ProviderSet = wire.NewSet(
 	NewAnnouncementService,
 	NewAdminService,
 	NewGatewayService,
-	NewOpenAIGatewayService,
+	ProvideOpenAIGatewayService,
 	ProvideImageStorageSettingService,
 	ProvideImageTaskService,
 	ProvideBatchImageModelPricingResolver,
@@ -903,10 +954,13 @@ var ProviderSet = wire.NewSet(
 	NewCompositeTokenCacheInvalidator,
 	wire.Bind(new(TokenCacheInvalidator), new(*CompositeTokenCacheInvalidator)),
 	NewAntigravityOAuthService,
+	NewGeminiAppOAuthService,
 	ProvideOAuthRefreshAPI,
 	ProvideGeminiTokenProvider,
 	NewGeminiMessagesCompatService,
 	ProvideAntigravityTokenProvider,
+	ProvideGeminiAppTokenProvider,
+	NewGeminiAppGatewayService,
 	ProvideGrokTokenProvider,
 	ProvideOpenAITokenProvider,
 	ProvideOpenAIQuotaService,

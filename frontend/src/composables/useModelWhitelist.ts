@@ -73,6 +73,13 @@ const geminiModels = [
   'gemini-4-argon'
 ]
 
+// Gemini App 原生模型别名（与后端 geminiapp.NativeModels 保持一致）
+const geminiAppModels = [
+  'gemini-argon',
+  'gemini-hydrogen',
+  'gemini-flash-lite'
+]
+
 // Antigravity 官方支持的模型（精确匹配）
 // 基于官方 API 返回的模型列表，只支持 Claude 4.5+ 和 Gemini 2.5+
 const antigravityModels = [
@@ -381,6 +388,12 @@ const geminiPresetMappings = [
   { label: '3.1 Image', from: 'gemini-3.1-flash-image', to: 'gemini-3.1-flash-image', color: 'bg-sky-100 text-sky-700 hover:bg-sky-200 dark:bg-sky-900/30 dark:text-sky-400' }
 ]
 
+const geminiAppPresetMappings = [
+  { label: 'Argon (Ultra)', from: 'gemini-argon', to: 'gemini-argon', color: 'bg-lime-100 text-lime-700 hover:bg-lime-200 dark:bg-lime-900/30 dark:text-lime-400' },
+  { label: 'Hydrogen (FAST)', from: 'gemini-hydrogen', to: 'gemini-hydrogen', color: 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400' },
+  { label: 'Flash Lite', from: 'gemini-flash-lite', to: 'gemini-flash-lite', color: 'bg-sky-100 text-sky-700 hover:bg-sky-200 dark:bg-sky-900/30 dark:text-sky-400' }
+]
+
 const grokPresetMappings = [
   { label: 'Grok 4.7', from: 'grok-4.7', to: 'grok-4.7', color: 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800/50 dark:text-slate-300' },
   { label: 'Grok 4.6', from: 'grok-4.6', to: 'grok-4.6', color: 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800/50 dark:text-slate-300' },
@@ -519,6 +532,7 @@ export function getModelsByPlatform(platform: string): string[] {
     case 'anthropic':
     case 'claude': return claudeModels
     case 'gemini': return geminiModels
+    case 'gemini_app': return geminiAppModels
     case 'antigravity': return antigravityModels
     case 'zhipu': return zhipuModels
     case 'qwen': return qwenModels
@@ -563,6 +577,7 @@ export function getPresetMappingsByPlatform(platform: string) {
   if (platform === 'gemini') return geminiPresetMappings
   if (platform === 'grok' || platform === 'xai') return grokPresetMappings
   if (platform === 'antigravity') return antigravityPresetMappings
+  if (platform === 'gemini_app') return geminiAppPresetMappings
   if (platform === 'bedrock') return bedrockPresetMappings
   return anthropicPresetMappings
 }

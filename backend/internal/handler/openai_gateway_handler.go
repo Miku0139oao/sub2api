@@ -3801,6 +3801,19 @@ func credentialFailoverClientResponse(failoverErr *service.UpstreamFailoverError
 	if failoverErr != nil && failoverErr.Reason == service.AntigravityCredentialRejectedReason {
 		return http.StatusBadGateway, service.AntigravityCredentialRejectedClientMessage
 	}
+	// Gemini App 的凭证拒绝必须回显自己的消息：默认兜底是 Grok 专用文案，
+	// 会把 gemini_app 的失败误报成 “No healthy Grok OAuth account”。
+	if failoverErr != nil && failoverErr.Reason == service.GeminiAppCredentialRejectedReason {
+		status := failoverErr.ClientStatusCode
+		if status <= 0 {
+			status = http.StatusBadGateway
+		}
+		message := strings.TrimSpace(failoverErr.ClientMessage)
+		if message == "" {
+			message = service.GeminiAppCredentialRejectedClientMessage
+		}
+		return status, message
+	}
 	return http.StatusServiceUnavailable, service.GrokCredentialUnavailableClientMessage
 }
 

@@ -1476,6 +1476,22 @@ export default {
                     validateAndCreate: 'Validate & Create',
                     pleaseEnterRefreshToken: 'Please enter Refresh Token',
                     failedToValidateRT: 'Failed to validate Refresh Token'
+                  },
+                  geminiApp: {
+                    title: 'Gemini App Account Authorization',
+                    onlyOAuthTitle: 'OAuth accounts only',
+                    onlyOAuthDesc:
+                      'Gemini App accounts sign in with a Google account via OAuth. After finishing Google sign-in the browser shows a localhost connection error: copy the full address (or its code parameter) and paste it below.',
+                    redirectUriLabel: 'Authorization redirect URI:',
+                    failedToGenerateUrl: 'Failed to generate Gemini App auth URL',
+                    missingExchangeParams: 'Missing code, session ID, or state',
+                    failedToExchangeCode: 'Failed to exchange Gemini App auth code',
+                    refreshTokenAuth: 'Manual RT',
+                    refreshTokenDesc:
+                      'Enter an existing Gemini App Refresh Token. The system validates it and creates the account.',
+                    refreshTokenPlaceholder: 'Paste your Gemini App Refresh Token...',
+                    pleaseEnterRefreshToken: 'Please enter Refresh Token',
+                    failedToValidateRT: 'Failed to validate Refresh Token'
                   }
                 },      // Gemini specific (platform-wide)
       gemini: {
@@ -1628,6 +1644,7 @@ export default {
       claudeCodeAccount: 'Claude Code Account',
       openaiAccount: 'OpenAI Account',
       geminiAccount: 'Gemini Account',
+      geminiAppAccount: 'Gemini App Account',
       antigravityAccount: 'Antigravity Account',
       grokAccount: 'Grok Account',
       inputMethod: 'Input Method',
@@ -1711,6 +1728,9 @@ export default {
         noData: 'No usage data available for this account'
       },
       usageWindow: {
+        geminiAppLocalOnly: '24h local',
+        geminiAppLocalOnlyHint:
+          'Gemini App exposes no quota API upstream. This row shows requests, tokens and billed cost recorded locally over the last 24 hours.',
         statsTitle: '5-Hour Window Usage Statistics',
         statsTitleDaily: 'Daily Usage Statistics',
         geminiProDaily: 'Pro',

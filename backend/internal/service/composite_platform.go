@@ -247,6 +247,12 @@ func DetectModelPlatform(model string) (string, bool) {
 		strings.HasPrefix(normalized, "whisper-"),
 		hasOpenAISeriesPrefix(normalized):
 		return PlatformOpenAI, true
+	// Gemini App 的原生别名必须先于 Gemini 的通用 gemini- 前缀判断，
+	// 否则 composite 分组会把它们路由到 Gemini 平台。
+	case normalized == "gemini-argon",
+		normalized == "gemini-hydrogen",
+		normalized == "gemini-flash-lite":
+		return PlatformGeminiApp, true
 	case strings.HasPrefix(normalized, "gemini-"),
 		strings.HasPrefix(normalized, "learnlm-"):
 		return PlatformGemini, true

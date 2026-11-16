@@ -143,6 +143,7 @@ type AccountTestService struct {
 	claudeTokenProvider       *ClaudeTokenProvider
 	grokTokenProvider         *GrokTokenProvider
 	antigravityGatewayService *AntigravityGatewayService
+	geminiAppGatewayService   *GeminiAppGatewayService
 	httpUpstream              HTTPUpstream
 	cfg                       *config.Config
 	settingService            *SettingService
@@ -168,6 +169,12 @@ func (s *AccountTestService) SetSettingService(settingService *SettingService) {
 func (s *AccountTestService) SetPluginManager(pluginManager *PluginManager) {
 	if s != nil {
 		s.pluginManager = pluginManager
+	}
+}
+
+func (s *AccountTestService) SetGeminiAppGatewayService(gateway *GeminiAppGatewayService) {
+	if s != nil {
+		s.geminiAppGatewayService = gateway
 	}
 }
 
@@ -413,6 +420,10 @@ func (s *AccountTestService) TestAccountConnection(c *gin.Context, accountID int
 
 	if account.Platform == PlatformAntigravity {
 		return s.routeAntigravityTest(c, account, modelID, prompt)
+	}
+
+	if account.Platform == PlatformGeminiApp {
+		return s.testGeminiAppAccountConnection(c, account, modelID, prompt)
 	}
 
 	// 按模型分流的多模型聚合平台（OpenCode、Command Code 等）。
