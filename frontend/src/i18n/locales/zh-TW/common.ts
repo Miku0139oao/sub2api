@@ -258,6 +258,7 @@ export default {
     loginFailed: '登入失敗，請檢查您的憑據後重試。',
     errors: {
       USER_NOT_ACTIVE: '帳號已被停用',
+      EMAIL_BLOCKED: '該電子郵件不允許註冊，請更換其他電子郵件。',
     },
     registrationFailed: '註冊失敗，請重試。',
     emailDomainRegistrationLimit:
